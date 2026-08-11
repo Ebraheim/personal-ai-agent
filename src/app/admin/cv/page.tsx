@@ -13,17 +13,33 @@ export default async function AdminCVPage() {
     redirect("/admin");
   }
 
-  const filePath = `${user.id}/resume.pdf`;
-
   const { data: fileList } = await supabase.storage
     .from("cvs")
     .list(user.id, {
-      limit: 20,
-      search: "resume.pdf",
+      limit: 100,
+      sortBy: {
+        column: "created_at",
+        order: "desc",
+      },
     });
 
-  const existingFile =
-    fileList?.find((file) => file.name === "resume.pdf") ?? null;
+  const pdfFiles = (fileList ?? [])
+    .filter((file) =>
+      file.name.toLowerCase().endsWith(".pdf")
+    )
+    .sort((a, b) => {
+      const aTime = new Date(
+        a.updated_at || a.created_at || 0
+      ).getTime();
+
+      const bTime = new Date(
+        b.updated_at || b.created_at || 0
+      ).getTime();
+
+      return bTime - aTime;
+    });
+
+  const latestFile = pdfFiles[0] ?? null;
 
   return (
     <main className="min-h-screen bg-[#070b12] px-6 py-20 text-white">
@@ -45,17 +61,21 @@ export default async function AdminCVPage() {
           </h1>
 
           <p className="mt-4 max-w-2xl text-white/50">
-            Upload or replace your latest CV. Later, the AI import system can
-            read it and suggest profile, project, and certification updates
-            before anything is published.
+            Upload or replace your latest CV. Each replacement is stored
+            with a fresh file path so the public website always opens the
+            newest version.
           </p>
         </div>
 
         <div className="mt-10">
           <CVManager
             userId={user.id}
-            filePath={filePath}
-            hasExistingFile={Boolean(existingFile)}
+            currentFilePath={
+              latestFile
+                ? `${user.id}/${latestFile.name}`
+                : null
+            }
+            hasExistingFile={Boolean(latestFile)}
           />
         </div>
       </div>

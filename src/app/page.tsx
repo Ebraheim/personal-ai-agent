@@ -77,9 +77,18 @@ type PublicSiteContent = {
   user_id: string;
   about_label: string | null;
   about_heading: string | null;
+  about_primary_text: string | null;
   about_secondary_text: string | null;
+  about_focus_heading: string | null;
   projects_label: string | null;
+  projects_heading: string | null;
   projects_description: string | null;
+  skills_label: string | null;
+  skills_heading: string | null;
+  skills_description: string | null;
+  certifications_label: string | null;
+  certifications_heading: string | null;
+  certifications_description: string | null;
   contact_label: string | null;
   contact_heading: string | null;
   contact_description: string | null;
@@ -107,7 +116,6 @@ export default function Home() {
   const [heroHighlights, setHeroHighlights] = useState<PublicHeroHighlight[]>([]);
   const [siteContent, setSiteContent] = useState<PublicSiteContent | null>(null);
   const [sections, setSections] = useState<PublicSection[]>([]);
-  const [cvUrl, setCvUrl] = useState<string>("");
   const [publicDataLoaded, setPublicDataLoaded] = useState(false);
 
   // Load the correct active nav item if the page opens with a hash.
@@ -166,36 +174,6 @@ export default function Home() {
     }
 
     loadPublicData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Load a short-lived download URL for the latest CV stored in Supabase.
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCvUrl() {
-      try {
-        const response = await fetch("/api/public-cv", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        if (!response.ok) return;
-
-        const data = await response.json();
-
-        if (!cancelled && data.url) {
-          setCvUrl(data.url);
-        }
-      } catch (error) {
-        console.error("CV URL load error:", error);
-      }
-    }
-
-    loadCvUrl();
 
     return () => {
       cancelled = true;
@@ -264,6 +242,32 @@ export default function Home() {
     };
   }, []);
 
+  async function downloadLatestCv() {
+    try {
+      const response = await fetch(
+        `/api/public-cv?ts=${Date.now()}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.url) {
+        window.alert(
+          data.error || "No uploaded CV is available."
+        );
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      console.error("CV download error:", error);
+      window.alert("Could not download the latest CV.");
+    }
+  }
+
   async function askAgent() {
     if (!question.trim()) return;
 
@@ -328,37 +332,55 @@ export default function Home() {
   const contactSection = sectionConfig("contact", "Contact");
 
   const heroTitle =
-    profile?.professional_title || "Computer & Autonomous Systems Engineer";
+    profile?.professional_title || "Professional Portfolio";
   const heroTagline =
-    profile?.hero_tagline || "AI • Robotics • Autonomous Systems";
-  const heroName = profile?.full_name || "Ebraheim Mohamed Pasha Qadri";
+    profile?.hero_tagline || "";
+  const heroName = profile?.full_name || "Portfolio Owner";
   const heroBio =
     profile?.bio ||
-    "I build practical AI, robotics, autonomous systems, and intelligent software projects with a focus on systems that can be tested, explained, and improved.";
+    "This portfolio is ready to be personalized from the admin dashboard.";
 
   const email = profile?.email || "ebraheimpasha@gmail.com";
   const linkedIn =
     profile?.linkedin_url || "https://linkedin.com/in/ebraheim13ae";
-  const github = profile?.github_url || "https://github.com/Ebraheim";
+  const github =
+    profile?.github_url || "https://github.com/Ebraheim";
 
   const aboutLabel = siteContent?.about_label || "About Me";
   const aboutHeading =
-    siteContent?.about_heading || "Building practical AI and autonomous systems.";
+    siteContent?.about_heading || "About";
+  const aboutPrimaryText =
+    siteContent?.about_primary_text ||
+    profile?.bio ||
+    "Tell visitors more about yourself, your business, or what you do.";
+
   const aboutSecondaryText =
-    siteContent?.about_secondary_text ||
-    "My work spans ROS-based robotics, AI systems, backend development, embedded systems, and agentic AI applications. I prefer building systems I can test, explain, and improve.";
+    siteContent?.about_secondary_text || "";
+
+  const aboutFocusHeading =
+    siteContent?.about_focus_heading || "Focus Areas";
 
   const projectsLabel = siteContent?.projects_label || "Selected Work";
+  const projectsHeading = siteContent?.projects_heading || "Projects";
   const projectsDescription =
-    siteContent?.projects_description ||
-    "Practical engineering work across robotics, AI, backend systems, cybersecurity, and agentic applications.";
+    siteContent?.projects_description || "";
+
+  const skillsLabel = siteContent?.skills_label || "Technical Toolkit";
+  const skillsHeading = siteContent?.skills_heading || "Skills";
+  const skillsDescription = siteContent?.skills_description || "";
+
+  const certificationsLabel =
+    siteContent?.certifications_label || "Certifications";
+  const certificationsHeading =
+    siteContent?.certifications_heading || "Certifications";
+  const certificationsDescription =
+    siteContent?.certifications_description || "";
 
   const contactLabel = siteContent?.contact_label || "Contact";
   const contactHeading =
-    siteContent?.contact_heading || "Let's build something useful.";
+    siteContent?.contact_heading || "Get in touch.";
   const contactDescription =
-    siteContent?.contact_description ||
-    "I am open to opportunities in robotics, autonomous systems, AI engineering, and intelligent software development. If my work matches what your team is building, feel free to get in touch.";
+    siteContent?.contact_description || "";
 
   return (
     <>
@@ -399,7 +421,11 @@ export default function Home() {
                   : "text-white hover:text-cyan-300"
               }`}
             >
-              {profile?.full_name ? profile.full_name.split(" ")[0] + " " + profile.full_name.split(" ").slice(-1)[0] : "Ebraheim Qadri"}
+              {profile?.full_name
+                ? profile.full_name.split(" ")[0] +
+                  " " +
+                  profile.full_name.split(" ").slice(-1)[0]
+                : "Portfolio"}
             </a>
 
             <nav className="flex flex-wrap items-center justify-end gap-2 text-sm">
@@ -533,19 +559,11 @@ export default function Home() {
             </div>
 
             <div className="mt-16 flex flex-wrap justify-center gap-8 text-sm text-white/40">
-              {publicDataLoaded && heroHighlights.length > 0 ? (
+              {publicDataLoaded &&
+                heroHighlights.length > 0 &&
                 heroHighlights.map((item) => (
                   <span key={item.id}>{item.label}</span>
-                ))
-              ) : (
-                <>
-                  <span>ROS & SLAM</span>
-                  <span>AI Systems</span>
-                  <span>Computer Vision</span>
-                  <span>Backend Development</span>
-                  <span>Agentic AI</span>
-                </>
-              )}
+                ))}
             </div>
           </div>
         </section>
@@ -563,7 +581,7 @@ export default function Home() {
 
             <div className="mb-12 flex flex-wrap items-end justify-between gap-5">
               <div>
-                <h2 className="text-4xl font-bold md:text-5xl">Projects</h2>
+                <h2 className="text-4xl font-bold md:text-5xl">{projectsHeading}</h2>
 
                 <p className="mt-4 max-w-2xl text-white/50">
                   {projectsDescription}
@@ -636,52 +654,9 @@ export default function Home() {
                   </article>
                 ))
               ) : (
-                <>
-                  <div className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/30 hover:bg-white/[0.055]">
-                    <div className="mb-5 inline-flex rounded-lg border border-cyan-300/15 bg-cyan-300/5 px-3 py-1 text-xs text-cyan-300">Robotics</div>
-                    <h3 className="mb-4 text-2xl font-semibold">Swarm Robotics for Indoor Safety</h3>
-                    <p className="mb-6 leading-7 text-white/55">ROS and SLAM-based multi-robot system for indoor exploration, mapping, localization, navigation, and hazard detection.</p>
-                    <div className="flex flex-wrap gap-2">
-                      {["ROS", "SLAM", "TurtleBot3", "CNN", "Multi-Robot"].map((item) => (
-                        <span key={item} className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50">{item}</span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-violet-300/30 hover:bg-white/[0.055]">
-                    <div className="mb-5 inline-flex rounded-lg border border-violet-300/15 bg-violet-300/5 px-3 py-1 text-xs text-violet-300">Artificial Intelligence</div>
-                    <h3 className="mb-4 text-2xl font-semibold">AI SOC Triage Copilot Lite</h3>
-                    <p className="mb-6 leading-7 text-white/55">AI-based cybersecurity system for alert triage, contextual analysis, MITRE ATT&CK mapping, risk scoring, and investigation guidance.</p>
-                    <div className="flex flex-wrap gap-2">
-                      {["AI", "Cybersecurity", "MITRE ATT&CK", "Reasoning"].map((item) => (
-                        <span key={item} className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50">{item}</span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-blue-300/30 hover:bg-white/[0.055]">
-                    <div className="mb-5 inline-flex rounded-lg border border-blue-300/15 bg-blue-300/5 px-3 py-1 text-xs text-blue-300">Backend</div>
-                    <h3 className="mb-4 text-2xl font-semibold">Task API</h3>
-                    <p className="mb-6 leading-7 text-white/55">Internship backend project demonstrating CRUD operations, validation, HTTP status codes, Swagger documentation, Git, and GitHub.</p>
-                    <div className="flex flex-wrap gap-2">
-                      {["Node.js", "Express", "Swagger", "REST API"].map((item) => (
-                        <span key={item} className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50">{item}</span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="group relative overflow-hidden rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[0.07] to-violet-500/[0.05] p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/40">
-                    <div className="absolute right-0 top-0 rounded-bl-xl bg-cyan-300 px-3 py-1 text-xs font-medium text-black">CURRENT BUILD</div>
-                    <div className="mb-5 inline-flex rounded-lg border border-cyan-300/15 bg-cyan-300/5 px-3 py-1 text-xs text-cyan-300">Agentic AI</div>
-                    <h3 className="mb-4 text-2xl font-semibold">Personal AI Agent</h3>
-                    <p className="mb-6 leading-7 text-white/55">Recruiter-facing AI system combining a personal brand website, verified knowledge base, retrieval, Gemini integration, and grounded responses.</p>
-                    <div className="flex flex-wrap gap-2">
-                      {["Next.js", "Gemini", "Retrieval", "Agents", "RAG"].map((item) => (
-                        <span key={item} className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50">{item}</span>
-                      ))}
-                    </div>
-                  </div>
-                </>
+                <div className="rounded-2xl border border-dashed border-white/10 p-8 text-white/35">
+                  No projects have been published yet.
+                </div>
               )}
             </div>
           </div>
@@ -696,10 +671,20 @@ export default function Home() {
         >
           <div className="mx-auto max-w-6xl">
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-              Technical Toolkit
+              {skillsLabel}
             </p>
 
-            <h2 className="mb-12 text-4xl font-bold md:text-5xl">Skills</h2>
+            <h2 className="text-4xl font-bold md:text-5xl">
+              {skillsHeading}
+            </h2>
+
+            {skillsDescription && (
+              <p className="mt-4 mb-12 max-w-3xl text-lg leading-8 text-white/50">
+                {skillsDescription}
+              </p>
+            )}
+
+            {!skillsDescription && <div className="mb-12" />}
 
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {publicDataLoaded && skills.length > 0
@@ -716,42 +701,11 @@ export default function Home() {
                       </p>
                     </div>
                   ))
-                : [
-                    {
-                      title: "Robotics & Autonomous Systems",
-                      text: "ROS, SLAM, TurtleBot3, Multi-Robot Systems, Task Allocation, Autonomous Navigation",
-                    },
-                    {
-                      title: "AI & Computer Vision",
-                      text: "PyTorch, OpenCV, CNNs, Image Processing, AI Reasoning, Anomaly Detection",
-                    },
-                    {
-                      title: "Programming",
-                      text: "Python, C++, Java, MATLAB, JavaScript, TypeScript",
-                    },
-                    {
-                      title: "Backend & APIs",
-                      text: "Node.js, Express, REST APIs, Swagger, HTTP, Validation, Git & GitHub",
-                    },
-                    {
-                      title: "AI Application Development",
-                      text: "Prompt Engineering, Retrieval, RAG, AI APIs, MCP, Agent Skills, Structured Outputs",
-                    },
-                    {
-                      title: "Embedded & Automation",
-                      text: "Arduino, Raspberry Pi, PLC Programming, Sensors, Control Systems",
-                    },
-                  ].map((skill) => (
-                    <div
-                      key={skill.title}
-                      className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-white/[0.05]"
-                    >
-                      <h3 className="mb-3 text-lg font-semibold">
-                        {skill.title}
-                      </h3>
-                      <p className="leading-7 text-white/50">{skill.text}</p>
+                : (
+                    <div className="rounded-2xl border border-dashed border-white/10 p-8 text-white/35 md:col-span-2 lg:col-span-3">
+                      No skills have been published yet.
                     </div>
-                  ))}
+                  )}
             </div>
           </div>
         </section>
@@ -765,12 +719,20 @@ export default function Home() {
         >
           <div className="mx-auto max-w-6xl">
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-              Certifications
+              {certificationsLabel}
             </p>
 
-            <h2 className="mb-12 text-4xl font-bold md:text-5xl">
-              AI & Technical Learning
+            <h2 className="text-4xl font-bold md:text-5xl">
+              {certificationsHeading}
             </h2>
+
+            {certificationsDescription && (
+              <p className="mt-4 mb-12 max-w-3xl text-lg leading-8 text-white/50">
+                {certificationsDescription}
+              </p>
+            )}
+
+            {!certificationsDescription && <div className="mb-12" />}
 
             {publicDataLoaded && certifications.length > 0 ? (
               <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -809,52 +771,9 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="rounded-2xl border border-cyan-300/15 bg-gradient-to-br from-cyan-300/[0.05] to-transparent p-7">
-                <p className="mb-2 text-xs uppercase tracking-[0.2em] text-cyan-300">
-                  Priority
-                </p>
-
-                <h3 className="mb-6 text-2xl font-semibold">
-                  Featured Certifications
-                </h3>
-
-                <ul className="space-y-3 text-white/60">
-                  <li>✓ AI Fluency: Framework & Foundations</li>
-                  <li>✓ AI Fluency for Builders</li>
-                  <li>✓ Claude Code 101</li>
-                  <li>✓ Claude Code in Action</li>
-                  <li>✓ Claude Platform 101</li>
-                  <li>✓ Building with the Claude API</li>
-                  <li>✓ Introduction to Model Context Protocol</li>
-                  <li>✓ Model Context Protocol: Advanced Topics</li>
-                  <li>✓ Introduction to Agent Skills</li>
-                  <li>✓ Introduction to Subagents</li>
-                </ul>
+              <div className="rounded-2xl border border-dashed border-white/10 p-8 text-white/35">
+                No certifications have been published yet.
               </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-7">
-                <p className="mb-2 text-xs uppercase tracking-[0.2em] text-white/35">
-                  Additional Learning
-                </p>
-
-                <h3 className="mb-6 text-2xl font-semibold">
-                  Additional AI Training
-                </h3>
-
-                <ul className="space-y-3 text-white/55">
-                  <li>• Claude 101</li>
-                  <li>• Introduction to Claude Cowork</li>
-                  <li>• AI Capabilities and Limitations</li>
-                  <li>• Claude with Amazon Bedrock</li>
-                  <li>• Claude with Google Cloud&apos;s Vertex AI</li>
-                  <li>• AI Fluency for Students</li>
-                  <li>• AI Fluency for Educators</li>
-                  <li>• Teaching AI Fluency</li>
-                  <li>• AI Fluency for Nonprofits</li>
-                </ul>
-              </div>
-            </div>
             )}
           </div>
         </section>
@@ -878,17 +797,20 @@ export default function Home() {
             <div className="grid gap-8 md:grid-cols-[1.5fr_1fr]">
               <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
                 <p className="mb-6 text-lg leading-8 text-white/60">
-                  {profile?.bio ||
-                    "I am a Computer & Autonomous Systems Engineer focused on AI, robotics, autonomous navigation, and intelligent software systems."}
+                  {aboutPrimaryText}
                 </p>
 
-                <p className="text-lg leading-8 text-white/60">
-                  {aboutSecondaryText}
-                </p>
+                {aboutSecondaryText && (
+                  <p className="text-lg leading-8 text-white/60">
+                    {aboutSecondaryText}
+                  </p>
+                )}
               </div>
 
               <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.035] p-8">
-                <h3 className="mb-6 text-xl font-semibold">Career Focus</h3>
+                <h3 className="mb-6 text-xl font-semibold">
+                  {aboutFocusHeading}
+                </h3>
 
                 <ul className="space-y-4 text-white/60">
                   {publicDataLoaded && careerFocus.length > 0 ? (
@@ -896,13 +818,9 @@ export default function Home() {
                       <li key={item.id}>→ {item.title}</li>
                     ))
                   ) : (
-                    <>
-                      <li>→ Robotics Engineering</li>
-                      <li>→ Autonomous Systems</li>
-                      <li>→ AI Engineering</li>
-                      <li>→ AI Application Development</li>
-                      <li>→ Intelligent Backend Systems</li>
-                    </>
+                    <li className="text-white/30">
+                      Add focus areas from the admin dashboard.
+                    </li>
                   )}
                 </ul>
               </div>
@@ -1017,50 +935,70 @@ export default function Home() {
               </p>
 
               <div className="flex flex-wrap gap-4">
-                <a
-                  href={`mailto:${email}`}
-                  className={contactButtonClass}
-                >
-                  Email
-                </a>
+                {email && (
+                  <a
+                    href={`mailto:${email}`}
+                    className={contactButtonClass}
+                  >
+                    Email
+                  </a>
+                )}
 
-                <a
-                  href={linkedIn}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={contactButtonClass}
-                >
-                  LinkedIn
-                </a>
+                {linkedIn && (
+                  <a
+                    href={linkedIn}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={contactButtonClass}
+                  >
+                    LinkedIn
+                  </a>
+                )}
 
-                <a
-                  href={github}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={contactButtonClass}
-                >
-                  GitHub
-                </a>
+                {github && (
+                  <a
+                    href={github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={contactButtonClass}
+                  >
+                    GitHub
+                  </a>
+                )}
 
-                <a
-                  href={cvUrl || "/Ebraheim_Resume.pdf"}
-                  {...(cvUrl
-                    ? {
-                        target: "_blank",
-                        rel: "noopener noreferrer",
-                      }
-                    : {
-                        download: "Ebraheim_Resume.pdf",
-                      })}
+                <button
+                  type="button"
+                  onClick={downloadLatestCv}
                   className={contactButtonClass}
                 >
                   Download CV ↓
-                </a>
+                </button>
               </div>
             </div>
 
             <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-white/30">
-              <p>© 2026 {profile?.full_name || "Ebraheim Mohamed Pasha Qadri"}</p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>
+                  © 2026 {profile?.full_name || "Portfolio Owner"}. All rights reserved.
+                </span>
+                <span className="text-white/15">·</span>
+                <span>
+                  Built by{" "}
+                  <a
+                    href="mailto:ebraheimpasha@gmail.com"
+                    className="text-cyan-300/70 transition hover:text-cyan-200"
+                  >
+                    Ebraheim Mohamed Pasha Qadri
+                  </a>
+                </span>
+                <span className="text-white/15">·</span>
+                <a
+                  href="mailto:ebraheimpasha@gmail.com?subject=Website%20Enquiry"
+                  className="text-cyan-300/70 transition hover:text-cyan-200"
+                >
+                  Contact Me
+                </a>
+              </div>
 
               <a
                 href="#home"
@@ -1076,4 +1014,4 @@ export default function Home() {
       </main>
     </>
   );
-}
+  }

@@ -3,63 +3,75 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Skill = {
+type CareerFocusItem = {
   id: string;
   title: string;
-  description: string;
-  display_order: number;
-  is_visible: boolean;
-};
-
-type SkillForm = {
-  title: string;
-  description: string;
   display_order: number;
   is_visible: boolean;
 };
 
 type SectionContent = {
-  skills_label: string;
-  skills_heading: string;
-  skills_description: string;
+  about_label: string;
+  about_heading: string;
+  about_primary_text: string;
+  about_secondary_text: string;
+  about_focus_heading: string;
 };
 
-type SkillsManagerProps = {
+type FocusForm = {
+  title: string;
+  display_order: number;
+  is_visible: boolean;
+};
+
+type AboutManagerProps = {
   userId: string;
-  initialSkills: Skill[];
   initialSectionContent: SectionContent;
+  initialCareerFocus: CareerFocusItem[];
 };
 
-const emptyForm: SkillForm = {
+const emptyFocusForm: FocusForm = {
   title: "",
-  description: "",
   display_order: 0,
   is_visible: true,
 };
 
-export default function SkillsManager({
+export default function AboutManager({
   userId,
-  initialSkills,
   initialSectionContent,
-}: SkillsManagerProps) {
-  const [skills, setSkills] = useState<Skill[]>(initialSkills);
+  initialCareerFocus,
+}: AboutManagerProps) {
   const [sectionContent, setSectionContent] =
     useState<SectionContent>(initialSectionContent);
 
-  const [form, setForm] = useState<SkillForm>(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [focusItems, setFocusItems] =
+    useState<CareerFocusItem[]>(initialCareerFocus);
 
-  const [savingSection, setSavingSection] = useState(false);
-  const [savingSkill, setSavingSkill] = useState(false);
+  const [focusForm, setFocusForm] =
+    useState<FocusForm>(emptyFocusForm);
 
-  const [sectionMessage, setSectionMessage] = useState("");
-  const [skillMessage, setSkillMessage] = useState("");
+  const [editingId, setEditingId] =
+    useState<string | null>(null);
+
+  const [savingSection, setSavingSection] =
+    useState(false);
+
+  const [savingFocus, setSavingFocus] =
+    useState(false);
+
+  const [sectionMessage, setSectionMessage] =
+    useState("");
+
+  const [focusMessage, setFocusMessage] =
+    useState("");
+
   const [error, setError] = useState("");
 
   const inputClass =
     "mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/40";
 
-  const labelClass = "text-sm font-medium text-white/60";
+  const labelClass =
+    "text-sm font-medium text-white/60";
 
   const sectionClass =
     "rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-8";
@@ -74,11 +86,11 @@ export default function SkillsManager({
     }));
   }
 
-  function updateField<K extends keyof SkillForm>(
+  function updateFocusField<K extends keyof FocusForm>(
     field: K,
-    value: SkillForm[K]
+    value: FocusForm[K]
   ) {
-    setForm((current) => ({
+    setFocusForm((current) => ({
       ...current,
       [field]: value,
     }));
@@ -96,17 +108,23 @@ export default function SkillsManager({
     const supabase = createClient();
 
     const sectionData = {
-      skills_label: sectionContent.skills_label.trim(),
-      skills_heading: sectionContent.skills_heading.trim(),
-      skills_description: sectionContent.skills_description.trim(),
+      about_label: sectionContent.about_label.trim(),
+      about_heading: sectionContent.about_heading.trim(),
+      about_primary_text:
+        sectionContent.about_primary_text.trim(),
+      about_secondary_text:
+        sectionContent.about_secondary_text.trim(),
+      about_focus_heading:
+        sectionContent.about_focus_heading.trim(),
       updated_at: new Date().toISOString(),
     };
 
-    const { data: existingContent, error: findError } = await supabase
-      .from("site_content")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const { data: existingContent, error: findError } =
+      await supabase
+        .from("site_content")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
 
     if (findError) {
       setError(findError.message);
@@ -140,86 +158,79 @@ export default function SkillsManager({
       }
     }
 
-    setSectionMessage("Skills section text saved successfully.");
+    setSectionMessage(
+      "About section text saved successfully."
+    );
     setSavingSection(false);
   }
 
-  function resetForm() {
-    setForm(emptyForm);
+  function resetFocusForm() {
+    setFocusForm(emptyFocusForm);
     setEditingId(null);
-    setSkillMessage("");
+    setFocusMessage("");
     setError("");
   }
 
-  function startEdit(skill: Skill) {
-    setEditingId(skill.id);
+  function startEdit(item: CareerFocusItem) {
+    setEditingId(item.id);
 
-    setForm({
-      title: skill.title,
-      description: skill.description,
-      display_order: skill.display_order,
-      is_visible: skill.is_visible,
+    setFocusForm({
+      title: item.title,
+      display_order: item.display_order,
+      is_visible: item.is_visible,
     });
 
-    setSkillMessage("");
+    setFocusMessage("");
     setError("");
 
     window.scrollTo({
-      top: 520,
+      top: 700,
       behavior: "smooth",
     });
   }
 
-  async function handleSave(
+  async function saveFocusItem(
     event: React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    if (!form.title.trim()) {
-      setError("Skill title is required.");
+    if (!focusForm.title.trim()) {
+      setError("Focus item title is required.");
       return;
     }
 
-    if (!form.description.trim()) {
-      setError("Skill description is required.");
-      return;
-    }
-
-    setSavingSkill(true);
-    setSkillMessage("");
+    setSavingFocus(true);
+    setFocusMessage("");
     setError("");
 
     const supabase = createClient();
 
-    const skillData = {
-      title: form.title.trim(),
-      description: form.description.trim(),
-      display_order: form.display_order,
-      is_visible: form.is_visible,
+    const itemData = {
+      title: focusForm.title.trim(),
+      display_order: focusForm.display_order,
+      is_visible: focusForm.is_visible,
       updated_at: new Date().toISOString(),
     };
 
     if (editingId) {
       const { data, error } = await supabase
-        .from("skills")
-        .update(skillData)
+        .from("career_focus")
+        .update(itemData)
         .eq("id", editingId)
         .eq("user_id", userId)
-        .select(
-          "id, title, description, display_order, is_visible"
-        )
+        .select("id, title, display_order, is_visible")
         .single();
 
       if (error) {
         setError(error.message);
-        setSavingSkill(false);
+        setSavingFocus(false);
         return;
       }
 
-      setSkills((current) =>
+      setFocusItems((current) =>
         current
-          .map((skill) =>
-            skill.id === editingId ? data : skill
+          .map((item) =>
+            item.id === editingId ? data : item
           )
           .sort(
             (a, b) =>
@@ -227,56 +238,52 @@ export default function SkillsManager({
           )
       );
 
-      setSkillMessage("Skill updated successfully.");
+      setFocusMessage("Focus item updated successfully.");
     } else {
       const { data, error } = await supabase
-        .from("skills")
+        .from("career_focus")
         .insert({
           user_id: userId,
-          ...skillData,
+          ...itemData,
         })
-        .select(
-          "id, title, description, display_order, is_visible"
-        )
+        .select("id, title, display_order, is_visible")
         .single();
 
       if (error) {
         setError(error.message);
-        setSavingSkill(false);
+        setSavingFocus(false);
         return;
       }
 
-      setSkills((current) =>
+      setFocusItems((current) =>
         [...current, data].sort(
           (a, b) =>
             a.display_order - b.display_order
         )
       );
 
-      setSkillMessage("Skill added successfully.");
+      setFocusMessage("Focus item added successfully.");
     }
 
-    setForm(emptyForm);
+    setFocusForm(emptyFocusForm);
     setEditingId(null);
-    setSavingSkill(false);
+    setSavingFocus(false);
   }
 
-  async function toggleVisibility(skill: Skill) {
+  async function toggleVisibility(item: CareerFocusItem) {
     setError("");
 
     const supabase = createClient();
 
     const { data, error } = await supabase
-      .from("skills")
+      .from("career_focus")
       .update({
-        is_visible: !skill.is_visible,
+        is_visible: !item.is_visible,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", skill.id)
+      .eq("id", item.id)
       .eq("user_id", userId)
-      .select(
-        "id, title, description, display_order, is_visible"
-      )
+      .select("id, title, display_order, is_visible")
       .single();
 
     if (error) {
@@ -284,16 +291,16 @@ export default function SkillsManager({
       return;
     }
 
-    setSkills((current) =>
-      current.map((item) =>
-        item.id === skill.id ? data : item
+    setFocusItems((current) =>
+      current.map((focusItem) =>
+        focusItem.id === item.id ? data : focusItem
       )
     );
   }
 
-  async function deleteSkill(skill: Skill) {
+  async function deleteItem(item: CareerFocusItem) {
     const confirmed = window.confirm(
-      `Delete "${skill.title}"? This cannot be undone.`
+      `Delete "${item.title}"? This cannot be undone.`
     );
 
     if (!confirmed) return;
@@ -303,9 +310,9 @@ export default function SkillsManager({
     const supabase = createClient();
 
     const { error } = await supabase
-      .from("skills")
+      .from("career_focus")
       .delete()
-      .eq("id", skill.id)
+      .eq("id", item.id)
       .eq("user_id", userId);
 
     if (error) {
@@ -313,12 +320,14 @@ export default function SkillsManager({
       return;
     }
 
-    setSkills((current) =>
-      current.filter((item) => item.id !== skill.id)
+    setFocusItems((current) =>
+      current.filter(
+        (focusItem) => focusItem.id !== item.id
+      )
     );
 
-    if (editingId === skill.id) {
-      resetForm();
+    if (editingId === item.id) {
+      resetFocusForm();
     }
   }
 
@@ -334,12 +343,11 @@ export default function SkillsManager({
           </p>
 
           <h2 className="mt-2 text-2xl font-semibold">
-            Skills Section Information
+            About Section Information
           </h2>
 
           <p className="mt-2 max-w-2xl text-sm text-white/40">
-            These fields control the label, heading, and description shown above
-            your skills.
+            Control all of the main text shown in your About section.
           </p>
         </div>
 
@@ -351,15 +359,15 @@ export default function SkillsManager({
 
             <input
               type="text"
-              value={sectionContent.skills_label}
+              value={sectionContent.about_label}
               onChange={(event) =>
                 updateSectionField(
-                  "skills_label",
+                  "about_label",
                   event.target.value
                 )
               }
               className={inputClass}
-              placeholder="Technical Toolkit"
+              placeholder="About"
             />
           </div>
 
@@ -370,34 +378,72 @@ export default function SkillsManager({
 
             <input
               type="text"
-              value={sectionContent.skills_heading}
+              value={sectionContent.about_heading}
               onChange={(event) =>
                 updateSectionField(
-                  "skills_heading",
+                  "about_heading",
                   event.target.value
                 )
               }
               className={inputClass}
-              placeholder="Skills"
+              placeholder="Tell visitors who you are."
             />
           </div>
 
           <div className="md:col-span-2">
             <label className={labelClass}>
-              Section Description
+              Main About Paragraph
             </label>
 
             <textarea
-              rows={4}
-              value={sectionContent.skills_description}
+              rows={5}
+              value={sectionContent.about_primary_text}
               onChange={(event) =>
                 updateSectionField(
-                  "skills_description",
+                  "about_primary_text",
                   event.target.value
                 )
               }
               className={inputClass}
-              placeholder="Explain your skills, capabilities, technologies, services, or areas of expertise..."
+              placeholder="Write your main About paragraph..."
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>
+              Secondary Paragraph
+            </label>
+
+            <textarea
+              rows={5}
+              value={sectionContent.about_secondary_text}
+              onChange={(event) =>
+                updateSectionField(
+                  "about_secondary_text",
+                  event.target.value
+                )
+              }
+              className={inputClass}
+              placeholder="Add a second paragraph if needed..."
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>
+              Focus Box Heading
+            </label>
+
+            <input
+              type="text"
+              value={sectionContent.about_focus_heading}
+              onChange={(event) =>
+                updateSectionField(
+                  "about_focus_heading",
+                  event.target.value
+                )
+              }
+              className={inputClass}
+              placeholder="Focus Areas"
             />
           </div>
         </div>
@@ -415,35 +461,35 @@ export default function SkillsManager({
         >
           {savingSection
             ? "Saving..."
-            : "Save Skills Section"}
+            : "Save About Section"}
         </button>
       </form>
 
       <form
-        onSubmit={handleSave}
+        onSubmit={saveFocusItem}
         className={sectionClass}
       >
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
-              Skill Cards
+              Focus Items
             </p>
 
             <h2 className="mt-2 text-2xl font-semibold">
               {editingId
-                ? "Edit Skill"
-                : "Add Skill"}
+                ? "Edit Focus Item"
+                : "Add Focus Item"}
             </h2>
 
             <p className="mt-2 text-sm text-white/40">
-              Add or update an individual skill group shown in this section.
+              These items appear inside the About section focus box.
             </p>
           </div>
 
           {editingId && (
             <button
               type="button"
-              onClick={resetForm}
+              onClick={resetFocusForm}
               className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/60 transition hover:bg-white/[0.05] hover:text-white"
             >
               Cancel Editing
@@ -454,39 +500,20 @@ export default function SkillsManager({
         <div className="grid gap-6 md:grid-cols-2">
           <div className="md:col-span-2">
             <label className={labelClass}>
-              Skill Group Title
+              Focus Item
             </label>
 
             <input
               type="text"
-              value={form.title}
+              value={focusForm.title}
               onChange={(event) =>
-                updateField(
+                updateFocusField(
                   "title",
                   event.target.value
                 )
               }
               className={inputClass}
-              placeholder="Example: Strength Training"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className={labelClass}>
-              Skills / Description
-            </label>
-
-            <textarea
-              rows={5}
-              value={form.description}
-              onChange={(event) =>
-                updateField(
-                  "description",
-                  event.target.value
-                )
-              }
-              className={inputClass}
-              placeholder="Describe the skills, services, technologies, or capabilities in this group..."
+              placeholder="Example: Product Design"
             />
           </div>
 
@@ -497,9 +524,9 @@ export default function SkillsManager({
 
             <input
               type="number"
-              value={form.display_order}
+              value={focusForm.display_order}
               onChange={(event) =>
-                updateField(
+                updateFocusField(
                   "display_order",
                   Number(event.target.value)
                 )
@@ -512,9 +539,9 @@ export default function SkillsManager({
             <label className="flex items-center gap-3 pb-3 text-sm text-white/60">
               <input
                 type="checkbox"
-                checked={form.is_visible}
+                checked={focusForm.is_visible}
                 onChange={(event) =>
-                  updateField(
+                  updateFocusField(
                     "is_visible",
                     event.target.checked
                   )
@@ -522,27 +549,27 @@ export default function SkillsManager({
                 className="h-4 w-4"
               />
 
-              Show this skill publicly
+              Show this item publicly
             </label>
           </div>
         </div>
 
-        {skillMessage && (
+        {focusMessage && (
           <div className="mt-6 rounded-xl border border-green-400/20 bg-green-400/10 p-3 text-sm text-green-300">
-            {skillMessage}
+            {focusMessage}
           </div>
         )}
 
         <button
           type="submit"
-          disabled={savingSkill}
+          disabled={savingFocus}
           className="mt-8 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-6 py-3 font-medium text-cyan-200 transition hover:bg-cyan-300/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {savingSkill
+          {savingFocus
             ? "Saving..."
             : editingId
-              ? "Update Skill"
-              : "Add Skill"}
+              ? "Update Focus Item"
+              : "Add Focus Item"}
         </button>
       </form>
 
@@ -553,53 +580,49 @@ export default function SkillsManager({
           </p>
 
           <h2 className="mt-2 text-2xl font-semibold">
-            Existing Skills
+            Existing Focus Items
           </h2>
         </div>
 
-        {skills.length === 0 ? (
+        {focusItems.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-white/40">
-            No skills added yet.
+            No focus items added yet.
           </div>
         ) : (
-          <div className="grid gap-5 md:grid-cols-2">
-            {skills.map((skill) => (
+          <div className="space-y-4">
+            {focusItems.map((item) => (
               <article
-                key={skill.id}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"
+                key={item.id}
+                className="flex flex-wrap items-center justify-between gap-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-xl font-semibold">
-                      {skill.title}
+                <div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h3 className="text-lg font-semibold">
+                      {item.title}
                     </h3>
 
-                    <p className="mt-3 text-sm leading-6 text-white/50">
-                      {skill.description}
-                    </p>
-
-                    <p className="mt-4 text-xs text-white/30">
-                      Order: {skill.display_order}
-                    </p>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs ${
+                        item.is_visible
+                          ? "bg-green-400/10 text-green-300"
+                          : "bg-white/5 text-white/40"
+                      }`}
+                    >
+                      {item.is_visible
+                        ? "Visible"
+                        : "Hidden"}
+                    </span>
                   </div>
 
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs ${
-                      skill.is_visible
-                        ? "bg-green-400/10 text-green-300"
-                        : "bg-white/5 text-white/40"
-                    }`}
-                  >
-                    {skill.is_visible
-                      ? "Visible"
-                      : "Hidden"}
-                  </span>
+                  <p className="mt-2 text-sm text-white/40">
+                    Order: {item.display_order}
+                  </p>
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={() => startEdit(skill)}
+                    onClick={() => startEdit(item)}
                     className="rounded-lg border border-cyan-300/20 px-4 py-2 text-sm text-cyan-300 transition hover:bg-cyan-300/10"
                   >
                     Edit
@@ -608,20 +631,18 @@ export default function SkillsManager({
                   <button
                     type="button"
                     onClick={() =>
-                      toggleVisibility(skill)
+                      toggleVisibility(item)
                     }
                     className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 transition hover:bg-white/[0.05] hover:text-white"
                   >
-                    {skill.is_visible
+                    {item.is_visible
                       ? "Hide"
                       : "Show"}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() =>
-                      deleteSkill(skill)
-                    }
+                    onClick={() => deleteItem(item)}
                     className="rounded-lg border border-red-400/20 px-4 py-2 text-sm text-red-300 transition hover:bg-red-400/10"
                   >
                     Delete
@@ -648,12 +669,12 @@ export default function SkillsManager({
         </a>
 
         <a
-          href="/#skills"
+          href="/#about"
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-3 text-sm font-medium text-cyan-200 transition hover:bg-cyan-300/20 hover:text-white"
         >
-          Preview Skills ↗
+          Preview About ↗
         </a>
       </div>
     </div>

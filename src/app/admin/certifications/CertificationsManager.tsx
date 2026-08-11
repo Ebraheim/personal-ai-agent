@@ -15,11 +15,6 @@ type Certification = {
   is_visible: boolean;
 };
 
-type CertificationsManagerProps = {
-  userId: string;
-  initialCertifications: Certification[];
-};
-
 type CertificationForm = {
   title: string;
   issuer: string;
@@ -29,6 +24,18 @@ type CertificationForm = {
   expiry_date: string;
   display_order: number;
   is_visible: boolean;
+};
+
+type SectionContent = {
+  certifications_label: string;
+  certifications_heading: string;
+  certifications_description: string;
+};
+
+type CertificationsManagerProps = {
+  userId: string;
+  initialCertifications: Certification[];
+  initialSectionContent: SectionContent;
 };
 
 const emptyForm: CertificationForm = {
@@ -45,15 +52,41 @@ const emptyForm: CertificationForm = {
 export default function CertificationsManager({
   userId,
   initialCertifications,
+  initialSectionContent,
 }: CertificationsManagerProps) {
   const [certifications, setCertifications] =
     useState<Certification[]>(initialCertifications);
 
+  const [sectionContent, setSectionContent] =
+    useState<SectionContent>(initialSectionContent);
+
   const [form, setForm] = useState<CertificationForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+
+  const [savingSection, setSavingSection] = useState(false);
+  const [savingCertification, setSavingCertification] = useState(false);
+
+  const [sectionMessage, setSectionMessage] = useState("");
+  const [certificationMessage, setCertificationMessage] = useState("");
   const [error, setError] = useState("");
+
+  const inputClass =
+    "mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/40";
+
+  const labelClass = "text-sm font-medium text-white/60";
+
+  const sectionClass =
+    "rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-8";
+
+  function updateSectionField(
+    field: keyof SectionContent,
+    value: string
+  ) {
+    setSectionContent((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
 
   function updateField<K extends keyof CertificationForm>(
     field: K,
@@ -65,10 +98,76 @@ export default function CertificationsManager({
     }));
   }
 
+  async function saveSectionContent(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    setSavingSection(true);
+    setSectionMessage("");
+    setError("");
+
+    const supabase = createClient();
+
+    const sectionData = {
+      certifications_label:
+        sectionContent.certifications_label.trim(),
+      certifications_heading:
+        sectionContent.certifications_heading.trim(),
+      certifications_description:
+        sectionContent.certifications_description.trim(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: existingContent, error: findError } =
+      await supabase
+        .from("site_content")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+    if (findError) {
+      setError(findError.message);
+      setSavingSection(false);
+      return;
+    }
+
+    if (existingContent) {
+      const { error: updateError } = await supabase
+        .from("site_content")
+        .update(sectionData)
+        .eq("user_id", userId);
+
+      if (updateError) {
+        setError(updateError.message);
+        setSavingSection(false);
+        return;
+      }
+    } else {
+      const { error: insertError } = await supabase
+        .from("site_content")
+        .insert({
+          user_id: userId,
+          ...sectionData,
+        });
+
+      if (insertError) {
+        setError(insertError.message);
+        setSavingSection(false);
+        return;
+      }
+    }
+
+    setSectionMessage(
+      "Certifications section text saved successfully."
+    );
+    setSavingSection(false);
+  }
+
   function resetForm() {
     setForm(emptyForm);
     setEditingId(null);
-    setMessage("");
+    setCertificationMessage("");
     setError("");
   }
 
@@ -86,13 +185,18 @@ export default function CertificationsManager({
       is_visible: certification.is_visible ?? true,
     });
 
+    setCertificationMessage("");
+    setError("");
+
     window.scrollTo({
-      top: 0,
+      top: 520,
       behavior: "smooth",
     });
   }
 
-  async function handleSave(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSave(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     if (!form.title.trim()) {
@@ -100,8 +204,8 @@ export default function CertificationsManager({
       return;
     }
 
-    setSaving(true);
-    setMessage("");
+    setSavingCertification(true);
+    setCertificationMessage("");
     setError("");
 
     const supabase = createClient();
@@ -124,22 +228,31 @@ export default function CertificationsManager({
         .update(certificationData)
         .eq("id", editingId)
         .eq("user_id", userId)
-        .select()
+        .select(
+          "id, title, issuer, credential_url, status, issue_date, expiry_date, display_order, is_visible"
+        )
         .single();
 
       if (error) {
         setError(error.message);
-        setSaving(false);
+        setSavingCertification(false);
         return;
       }
 
       setCertifications((current) =>
-        current.map((certification) =>
-          certification.id === editingId ? data : certification
-        )
+        current
+          .map((certification) =>
+            certification.id === editingId ? data : certification
+          )
+          .sort(
+            (a, b) =>
+              a.display_order - b.display_order
+          )
       );
 
-      setMessage("Certification updated successfully.");
+      setCertificationMessage(
+        "Certification updated successfully."
+      );
     } else {
       const { data, error } = await supabase
         .from("certifications")
@@ -147,25 +260,39 @@ export default function CertificationsManager({
           user_id: userId,
           ...certificationData,
         })
-        .select()
+        .select(
+          "id, title, issuer, credential_url, status, issue_date, expiry_date, display_order, is_visible"
+        )
         .single();
 
       if (error) {
         setError(error.message);
-        setSaving(false);
+        setSavingCertification(false);
         return;
       }
 
-      setCertifications((current) => [data, ...current]);
-      setMessage("Certification added successfully.");
+      setCertifications((current) =>
+        [...current, data].sort(
+          (a, b) =>
+            a.display_order - b.display_order
+        )
+      );
+
+      setCertificationMessage(
+        "Certification added successfully."
+      );
     }
 
     setForm(emptyForm);
     setEditingId(null);
-    setSaving(false);
+    setSavingCertification(false);
   }
 
-  async function toggleVisibility(certification: Certification) {
+  async function toggleVisibility(
+    certification: Certification
+  ) {
+    setError("");
+
     const supabase = createClient();
 
     const { data, error } = await supabase
@@ -176,7 +303,9 @@ export default function CertificationsManager({
       })
       .eq("id", certification.id)
       .eq("user_id", userId)
-      .select()
+      .select(
+        "id, title, issuer, credential_url, status, issue_date, expiry_date, display_order, is_visible"
+      )
       .single();
 
     if (error) {
@@ -191,14 +320,16 @@ export default function CertificationsManager({
     );
   }
 
-  async function deleteCertification(certification: Certification) {
+  async function deleteCertification(
+    certification: Certification
+  ) {
     const confirmed = window.confirm(
       `Delete "${certification.title}"? This cannot be undone.`
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
+
+    setError("");
 
     const supabase = createClient();
 
@@ -222,26 +353,122 @@ export default function CertificationsManager({
     }
   }
 
-  const inputClass =
-    "mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/40";
-
-  const labelClass = "text-sm text-white/60";
-
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
+      <form
+        onSubmit={saveSectionContent}
+        className={sectionClass}
+      >
+        <div className="mb-8">
+          <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
+            Section Text
+          </p>
+
+          <h2 className="mt-2 text-2xl font-semibold">
+            Certifications Section Information
+          </h2>
+
+          <p className="mt-2 max-w-2xl text-sm text-white/40">
+            These fields control the label, heading, and description shown
+            above your certifications.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <div>
+            <label className={labelClass}>
+              Small Label
+            </label>
+
+            <input
+              type="text"
+              value={sectionContent.certifications_label}
+              onChange={(event) =>
+                updateSectionField(
+                  "certifications_label",
+                  event.target.value
+                )
+              }
+              className={inputClass}
+              placeholder="Certifications"
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>
+              Main Heading
+            </label>
+
+            <input
+              type="text"
+              value={sectionContent.certifications_heading}
+              onChange={(event) =>
+                updateSectionField(
+                  "certifications_heading",
+                  event.target.value
+                )
+              }
+              className={inputClass}
+              placeholder="Qualifications & Credentials"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>
+              Section Description
+            </label>
+
+            <textarea
+              rows={4}
+              value={sectionContent.certifications_description}
+              onChange={(event) =>
+                updateSectionField(
+                  "certifications_description",
+                  event.target.value
+                )
+              }
+              className={inputClass}
+              placeholder="Explain the certifications, credentials, awards, qualifications, or training shown here..."
+            />
+          </div>
+        </div>
+
+        {sectionMessage && (
+          <div className="mt-6 rounded-xl border border-green-400/20 bg-green-400/10 p-3 text-sm text-green-300">
+            {sectionMessage}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={savingSection}
+          className="mt-8 rounded-xl bg-cyan-300 px-6 py-3 font-semibold text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {savingSection
+            ? "Saving..."
+            : "Save Certifications Section"}
+        </button>
+      </form>
+
       <form
         onSubmit={handleSave}
-        className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8"
+        className={sectionClass}
       >
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-cyan-300">
-              {editingId ? "Editing Certification" : "New Certification"}
+            <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
+              Certification Cards
             </p>
 
-            <h2 className="mt-1 text-2xl font-semibold">
-              {editingId ? "Update Certification" : "Add Certification"}
+            <h2 className="mt-2 text-2xl font-semibold">
+              {editingId
+                ? "Edit Certification"
+                : "Add Certification"}
             </h2>
+
+            <p className="mt-2 text-sm text-white/40">
+              Add or update an individual certification shown in this section.
+            </p>
           </div>
 
           {editingId && (
@@ -269,7 +496,7 @@ export default function CertificationsManager({
                 updateField("title", event.target.value)
               }
               className={inputClass}
-              placeholder="Claude Code 101"
+              placeholder="Certification title"
             />
           </div>
 
@@ -285,7 +512,7 @@ export default function CertificationsManager({
                 updateField("issuer", event.target.value)
               }
               className={inputClass}
-              placeholder="Anthropic"
+              placeholder="Issuer or organization"
             />
           </div>
 
@@ -298,7 +525,10 @@ export default function CertificationsManager({
               type="url"
               value={form.credential_url}
               onChange={(event) =>
-                updateField("credential_url", event.target.value)
+                updateField(
+                  "credential_url",
+                  event.target.value
+                )
               }
               className={inputClass}
               placeholder="https://..."
@@ -358,7 +588,10 @@ export default function CertificationsManager({
               type="date"
               value={form.issue_date}
               onChange={(event) =>
-                updateField("issue_date", event.target.value)
+                updateField(
+                  "issue_date",
+                  event.target.value
+                )
               }
               className={inputClass}
             />
@@ -373,7 +606,10 @@ export default function CertificationsManager({
               type="date"
               value={form.expiry_date}
               onChange={(event) =>
-                updateField("expiry_date", event.target.value)
+                updateField(
+                  "expiry_date",
+                  event.target.value
+                )
               }
               className={inputClass}
             />
@@ -385,7 +621,10 @@ export default function CertificationsManager({
                 type="checkbox"
                 checked={form.is_visible}
                 onChange={(event) =>
-                  updateField("is_visible", event.target.checked)
+                  updateField(
+                    "is_visible",
+                    event.target.checked
+                  )
                 }
                 className="h-4 w-4"
               />
@@ -395,24 +634,18 @@ export default function CertificationsManager({
           </div>
         </div>
 
-        {message && (
+        {certificationMessage && (
           <div className="mt-6 rounded-xl border border-green-400/20 bg-green-400/10 p-3 text-sm text-green-300">
-            {message}
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-6 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">
-            {error}
+            {certificationMessage}
           </div>
         )}
 
         <button
           type="submit"
-          disabled={saving}
+          disabled={savingCertification}
           className="mt-8 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-6 py-3 font-medium text-cyan-200 transition hover:bg-cyan-300/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {saving
+          {savingCertification
             ? "Saving..."
             : editingId
               ? "Update Certification"
@@ -420,10 +653,10 @@ export default function CertificationsManager({
         </button>
       </form>
 
-      <section>
-        <div className="mb-5">
-          <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">
-            Portfolio Certifications
+      <section className={sectionClass}>
+        <div className="mb-6">
+          <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
+            Current Content
           </p>
 
           <h2 className="mt-2 text-2xl font-semibold">
@@ -445,7 +678,7 @@ export default function CertificationsManager({
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
-                      {certification.status}
+                      {certification.status.replaceAll("-", " ")}
                     </p>
 
                     <h3 className="mt-2 text-xl font-semibold">
@@ -457,6 +690,10 @@ export default function CertificationsManager({
                         {certification.issuer}
                       </p>
                     )}
+
+                    <p className="mt-4 text-xs text-white/30">
+                      Order: {certification.display_order}
+                    </p>
                   </div>
 
                   <span
@@ -466,14 +703,18 @@ export default function CertificationsManager({
                         : "bg-white/5 text-white/40"
                     }`}
                   >
-                    {certification.is_visible ? "Visible" : "Hidden"}
+                    {certification.is_visible
+                      ? "Visible"
+                      : "Hidden"}
                   </span>
                 </div>
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={() => startEdit(certification)}
+                    onClick={() =>
+                      startEdit(certification)
+                    }
                     className="rounded-lg border border-cyan-300/20 px-4 py-2 text-sm text-cyan-300 transition hover:bg-cyan-300/10"
                   >
                     Edit
@@ -481,15 +722,21 @@ export default function CertificationsManager({
 
                   <button
                     type="button"
-                    onClick={() => toggleVisibility(certification)}
+                    onClick={() =>
+                      toggleVisibility(certification)
+                    }
                     className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 transition hover:bg-white/[0.05] hover:text-white"
                   >
-                    {certification.is_visible ? "Hide" : "Show"}
+                    {certification.is_visible
+                      ? "Hide"
+                      : "Show"}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => deleteCertification(certification)}
+                    onClick={() =>
+                      deleteCertification(certification)
+                    }
                     className="rounded-lg border border-red-400/20 px-4 py-2 text-sm text-red-300 transition hover:bg-red-400/10"
                   >
                     Delete
@@ -511,6 +758,30 @@ export default function CertificationsManager({
           </div>
         )}
       </section>
+
+      {error && (
+        <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-8">
+        <a
+          href="/admin/dashboard"
+          className="text-sm text-white/40 transition hover:text-white"
+        >
+          ← Dashboard
+        </a>
+
+        <a
+          href="/#certifications"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-3 text-sm font-medium text-cyan-200 transition hover:bg-cyan-300/20 hover:text-white"
+        >
+          Preview Certifications ↗
+        </a>
+      </div>
     </div>
   );
 }

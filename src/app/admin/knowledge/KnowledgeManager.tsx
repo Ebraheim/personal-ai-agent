@@ -12,17 +12,24 @@ type KnowledgeItem = {
   priority: number;
 };
 
-type KnowledgeManagerProps = {
-  userId: string;
-  initialKnowledge: KnowledgeItem[];
-};
-
 type KnowledgeForm = {
   title: string;
   content: string;
   category: string;
   is_active: boolean;
   priority: number;
+};
+
+type SectionContent = {
+  ai_label: string;
+  ai_heading: string;
+  ai_description: string;
+};
+
+type KnowledgeManagerProps = {
+  userId: string;
+  initialKnowledge: KnowledgeItem[];
+  initialSectionContent: SectionContent;
 };
 
 const emptyForm: KnowledgeForm = {
@@ -36,15 +43,41 @@ const emptyForm: KnowledgeForm = {
 export default function KnowledgeManager({
   userId,
   initialKnowledge,
+  initialSectionContent,
 }: KnowledgeManagerProps) {
   const [knowledge, setKnowledge] =
     useState<KnowledgeItem[]>(initialKnowledge);
 
+  const [sectionContent, setSectionContent] =
+    useState<SectionContent>(initialSectionContent);
+
   const [form, setForm] = useState<KnowledgeForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+
+  const [savingSection, setSavingSection] = useState(false);
+  const [savingKnowledge, setSavingKnowledge] = useState(false);
+
+  const [sectionMessage, setSectionMessage] = useState("");
+  const [knowledgeMessage, setKnowledgeMessage] = useState("");
   const [error, setError] = useState("");
+
+  const inputClass =
+    "mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/40";
+
+  const labelClass = "text-sm font-medium text-white/60";
+
+  const sectionClass =
+    "rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-8";
+
+  function updateSectionField(
+    field: keyof SectionContent,
+    value: string
+  ) {
+    setSectionContent((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
 
   function updateField<K extends keyof KnowledgeForm>(
     field: K,
@@ -56,10 +89,73 @@ export default function KnowledgeManager({
     }));
   }
 
+  async function saveSectionContent(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    setSavingSection(true);
+    setSectionMessage("");
+    setError("");
+
+    const supabase = createClient();
+
+    const sectionData = {
+      ai_label: sectionContent.ai_label.trim(),
+      ai_heading: sectionContent.ai_heading.trim(),
+      ai_description: sectionContent.ai_description.trim(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: existingContent, error: findError } =
+      await supabase
+        .from("site_content")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+    if (findError) {
+      setError(findError.message);
+      setSavingSection(false);
+      return;
+    }
+
+    if (existingContent) {
+      const { error: updateError } = await supabase
+        .from("site_content")
+        .update(sectionData)
+        .eq("user_id", userId);
+
+      if (updateError) {
+        setError(updateError.message);
+        setSavingSection(false);
+        return;
+      }
+    } else {
+      const { error: insertError } = await supabase
+        .from("site_content")
+        .insert({
+          user_id: userId,
+          ...sectionData,
+        });
+
+      if (insertError) {
+        setError(insertError.message);
+        setSavingSection(false);
+        return;
+      }
+    }
+
+    setSectionMessage(
+      "AI Assistant section text saved successfully."
+    );
+    setSavingSection(false);
+  }
+
   function resetForm() {
     setForm(emptyForm);
     setEditingId(null);
-    setMessage("");
+    setKnowledgeMessage("");
     setError("");
   }
 
@@ -74,13 +170,18 @@ export default function KnowledgeManager({
       priority: item.priority,
     });
 
+    setKnowledgeMessage("");
+    setError("");
+
     window.scrollTo({
-      top: 0,
+      top: 560,
       behavior: "smooth",
     });
   }
 
-  async function handleSave(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSave(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
     if (!form.title.trim()) {
@@ -93,8 +194,8 @@ export default function KnowledgeManager({
       return;
     }
 
-    setSaving(true);
-    setMessage("");
+    setSavingKnowledge(true);
+    setKnowledgeMessage("");
     setError("");
 
     const supabase = createClient();
@@ -114,22 +215,24 @@ export default function KnowledgeManager({
         .update(knowledgeData)
         .eq("id", editingId)
         .eq("user_id", userId)
-        .select()
+        .select("id, title, content, category, is_active, priority")
         .single();
 
       if (error) {
         setError(error.message);
-        setSaving(false);
+        setSavingKnowledge(false);
         return;
       }
 
       setKnowledge((current) =>
-        current.map((item) =>
-          item.id === editingId ? data : item
-        )
+        current
+          .map((item) =>
+            item.id === editingId ? data : item
+          )
+          .sort((a, b) => b.priority - a.priority)
       );
 
-      setMessage("Knowledge updated successfully.");
+      setKnowledgeMessage("Knowledge updated successfully.");
     } else {
       const { data, error } = await supabase
         .from("agent_knowledge")
@@ -137,25 +240,32 @@ export default function KnowledgeManager({
           user_id: userId,
           ...knowledgeData,
         })
-        .select()
+        .select("id, title, content, category, is_active, priority")
         .single();
 
       if (error) {
         setError(error.message);
-        setSaving(false);
+        setSavingKnowledge(false);
         return;
       }
 
-      setKnowledge((current) => [data, ...current]);
-      setMessage("Knowledge added successfully.");
+      setKnowledge((current) =>
+        [...current, data].sort(
+          (a, b) => b.priority - a.priority
+        )
+      );
+
+      setKnowledgeMessage("Knowledge added successfully.");
     }
 
     setForm(emptyForm);
     setEditingId(null);
-    setSaving(false);
+    setSavingKnowledge(false);
   }
 
   async function toggleActive(item: KnowledgeItem) {
+    setError("");
+
     const supabase = createClient();
 
     const { data, error } = await supabase
@@ -166,7 +276,7 @@ export default function KnowledgeManager({
       })
       .eq("id", item.id)
       .eq("user_id", userId)
-      .select()
+      .select("id, title, content, category, is_active, priority")
       .single();
 
     if (error) {
@@ -186,9 +296,9 @@ export default function KnowledgeManager({
       `Delete "${item.title}"? This cannot be undone.`
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
+
+    setError("");
 
     const supabase = createClient();
 
@@ -204,7 +314,9 @@ export default function KnowledgeManager({
     }
 
     setKnowledge((current) =>
-      current.filter((knowledgeItem) => knowledgeItem.id !== item.id)
+      current.filter(
+        (knowledgeItem) => knowledgeItem.id !== item.id
+      )
     );
 
     if (editingId === item.id) {
@@ -212,26 +324,123 @@ export default function KnowledgeManager({
     }
   }
 
-  const inputClass =
-    "mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/40";
-
-  const labelClass = "text-sm text-white/60";
-
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
+      <form
+        onSubmit={saveSectionContent}
+        className={sectionClass}
+      >
+        <div className="mb-8">
+          <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
+            Section Text
+          </p>
+
+          <h2 className="mt-2 text-2xl font-semibold">
+            AI Assistant Section Information
+          </h2>
+
+          <p className="mt-2 max-w-2xl text-sm text-white/40">
+            Control the public label, heading, and description shown above the
+            AI assistant.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <div>
+            <label className={labelClass}>
+              Small Label
+            </label>
+
+            <input
+              type="text"
+              value={sectionContent.ai_label}
+              onChange={(event) =>
+                updateSectionField(
+                  "ai_label",
+                  event.target.value
+                )
+              }
+              className={inputClass}
+              placeholder="AI Assistant"
+            />
+          </div>
+
+          <div>
+            <label className={labelClass}>
+              Main Heading
+            </label>
+
+            <input
+              type="text"
+              value={sectionContent.ai_heading}
+              onChange={(event) =>
+                updateSectionField(
+                  "ai_heading",
+                  event.target.value
+                )
+              }
+              className={inputClass}
+              placeholder="Ask a question."
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>
+              Section Description
+            </label>
+
+            <textarea
+              rows={4}
+              value={sectionContent.ai_description}
+              onChange={(event) =>
+                updateSectionField(
+                  "ai_description",
+                  event.target.value
+                )
+              }
+              className={inputClass}
+              placeholder="Explain what visitors can ask the AI assistant..."
+            />
+          </div>
+        </div>
+
+        {sectionMessage && (
+          <div className="mt-6 rounded-xl border border-green-400/20 bg-green-400/10 p-3 text-sm text-green-300">
+            {sectionMessage}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={savingSection}
+          className="mt-8 rounded-xl bg-cyan-300 px-6 py-3 font-semibold text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {savingSection
+            ? "Saving..."
+            : "Save AI Assistant Section"}
+        </button>
+      </form>
+
       <form
         onSubmit={handleSave}
-        className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8"
+        className={sectionClass}
       >
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm text-cyan-300">
-              {editingId ? "Editing Knowledge" : "New Knowledge"}
+            <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
+              Verified Knowledge
             </p>
 
-            <h2 className="mt-1 text-2xl font-semibold">
-              {editingId ? "Update Knowledge" : "Add Knowledge"}
+            <h2 className="mt-2 text-2xl font-semibold">
+              {editingId
+                ? "Edit Knowledge"
+                : "Add Knowledge"}
             </h2>
+
+            <p className="mt-2 max-w-2xl text-sm text-white/40">
+              Add information the AI assistant is allowed to use when answering
+              visitor questions.
+            </p>
           </div>
 
           {editingId && (
@@ -258,7 +467,7 @@ export default function KnowledgeManager({
                 updateField("title", event.target.value)
               }
               className={inputClass}
-              placeholder="Swarm Robotics Project"
+              placeholder="Example: Services Offered"
             />
           </div>
 
@@ -270,7 +479,10 @@ export default function KnowledgeManager({
             <select
               value={form.category}
               onChange={(event) =>
-                updateField("category", event.target.value)
+                updateField(
+                  "category",
+                  event.target.value
+                )
               }
               className={inputClass}
             >
@@ -282,6 +494,9 @@ export default function KnowledgeManager({
               <option value="skills">Skills</option>
               <option value="certification">Certification</option>
               <option value="career">Career</option>
+              <option value="services">Services</option>
+              <option value="business">Business</option>
+              <option value="faq">FAQ</option>
             </select>
           </div>
 
@@ -294,13 +509,16 @@ export default function KnowledgeManager({
               type="number"
               value={form.priority}
               onChange={(event) =>
-                updateField("priority", Number(event.target.value))
+                updateField(
+                  "priority",
+                  Number(event.target.value)
+                )
               }
               className={inputClass}
             />
 
             <p className="mt-2 text-xs text-white/30">
-              Higher numbers can be treated as more important later.
+              Higher numbers place the entry earlier in the knowledge list.
             </p>
           </div>
 
@@ -313,10 +531,13 @@ export default function KnowledgeManager({
               rows={8}
               value={form.content}
               onChange={(event) =>
-                updateField("content", event.target.value)
+                updateField(
+                  "content",
+                  event.target.value
+                )
               }
               className={inputClass}
-              placeholder="Write the exact verified information the agent is allowed to use..."
+              placeholder="Write the exact verified information the assistant is allowed to use..."
             />
           </div>
 
@@ -326,34 +547,31 @@ export default function KnowledgeManager({
                 type="checkbox"
                 checked={form.is_active}
                 onChange={(event) =>
-                  updateField("is_active", event.target.checked)
+                  updateField(
+                    "is_active",
+                    event.target.checked
+                  )
                 }
                 className="h-4 w-4"
               />
 
-              Allow the AI agent to use this knowledge
+              Allow the AI assistant to use this knowledge
             </label>
           </div>
         </div>
 
-        {message && (
+        {knowledgeMessage && (
           <div className="mt-6 rounded-xl border border-green-400/20 bg-green-400/10 p-3 text-sm text-green-300">
-            {message}
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-6 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">
-            {error}
+            {knowledgeMessage}
           </div>
         )}
 
         <button
           type="submit"
-          disabled={saving}
+          disabled={savingKnowledge}
           className="mt-8 rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-6 py-3 font-medium text-cyan-200 transition hover:bg-cyan-300/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {saving
+          {savingKnowledge
             ? "Saving..."
             : editingId
               ? "Update Knowledge"
@@ -361,10 +579,10 @@ export default function KnowledgeManager({
         </button>
       </form>
 
-      <section>
-        <div className="mb-5">
-          <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">
-            Agent Knowledge Base
+      <section className={sectionClass}>
+        <div className="mb-6">
+          <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
+            Knowledge Base
           </p>
 
           <h2 className="mt-2 text-2xl font-semibold">
@@ -401,7 +619,9 @@ export default function KnowledgeManager({
                         : "bg-white/5 text-white/40"
                     }`}
                   >
-                    {item.is_active ? "Active" : "Disabled"}
+                    {item.is_active
+                      ? "Active"
+                      : "Disabled"}
                   </span>
                 </div>
 
@@ -427,7 +647,9 @@ export default function KnowledgeManager({
                     onClick={() => toggleActive(item)}
                     className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 transition hover:bg-white/[0.05] hover:text-white"
                   >
-                    {item.is_active ? "Disable" : "Enable"}
+                    {item.is_active
+                      ? "Disable"
+                      : "Enable"}
                   </button>
 
                   <button
@@ -443,6 +665,30 @@ export default function KnowledgeManager({
           </div>
         )}
       </section>
+
+      {error && (
+        <div className="rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-8">
+        <a
+          href="/admin/dashboard"
+          className="text-sm text-white/40 transition hover:text-white"
+        >
+          ← Dashboard
+        </a>
+
+        <a
+          href="/#agent"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-3 text-sm font-medium text-cyan-200 transition hover:bg-cyan-300/20 hover:text-white"
+        >
+          Preview AI Assistant ↗
+        </a>
+      </div>
     </div>
   );
 }

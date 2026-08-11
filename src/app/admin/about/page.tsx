@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import ProjectsManager from "./ProjectsManager";
+import AboutManager from "./AboutManager";
 
-export default async function AdminProjectsPage() {
+export default async function AdminAboutPage() {
   const supabase = await createClient();
 
   const {
@@ -13,24 +13,23 @@ export default async function AdminProjectsPage() {
     redirect("/admin");
   }
 
-  const [{ data: projects }, { data: siteContent }] = await Promise.all([
-    supabase
-      .from("projects")
-      .select(
-        "id, title, short_description, full_description, technologies, project_url, github_url, status, display_order, is_visible"
-      )
-      .eq("user_id", user.id)
-      .order("display_order", { ascending: true })
-      .order("created_at", { ascending: false }),
+  const [{ data: siteContent }, { data: careerFocus }] =
+    await Promise.all([
+      supabase
+        .from("site_content")
+        .select(
+          "about_label, about_heading, about_primary_text, about_secondary_text, about_focus_heading"
+        )
+        .eq("user_id", user.id)
+        .maybeSingle(),
 
-    supabase
-      .from("site_content")
-      .select(
-        "projects_label, projects_heading, projects_description"
-      )
-      .eq("user_id", user.id)
-      .maybeSingle(),
-  ]);
+      supabase
+        .from("career_focus")
+        .select("id, title, display_order, is_visible")
+        .eq("user_id", user.id)
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: false }),
+    ]);
 
   return (
     <main className="min-h-screen bg-[#070b12] px-6 py-16 text-white">
@@ -45,38 +44,39 @@ export default async function AdminProjectsPage() {
         <div className="mt-8 flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-              Projects Section
+              About Section
             </p>
 
             <h1 className="text-4xl font-bold md:text-5xl">
-              Edit Projects
+              Edit About
             </h1>
 
             <p className="mt-4 max-w-2xl text-white/50">
-              Everything here controls the Projects section shown on your public
-              website.
+              Everything here controls the About section shown on your public website.
             </p>
           </div>
 
           <a
-            href="/#projects"
+            href="/#about"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm text-white/60 transition hover:border-cyan-300/30 hover:text-white"
           >
-            Preview Projects ↗
+            Preview About ↗
           </a>
         </div>
 
         <div className="mt-10">
-          <ProjectsManager
+          <AboutManager
             userId={user.id}
-            initialProjects={projects ?? []}
             initialSectionContent={{
-              projects_label: siteContent?.projects_label ?? "",
-              projects_heading: siteContent?.projects_heading ?? "",
-              projects_description: siteContent?.projects_description ?? "",
+              about_label: siteContent?.about_label ?? "",
+              about_heading: siteContent?.about_heading ?? "",
+              about_primary_text: siteContent?.about_primary_text ?? "",
+              about_secondary_text: siteContent?.about_secondary_text ?? "",
+              about_focus_heading: siteContent?.about_focus_heading ?? "",
             }}
+            initialCareerFocus={careerFocus ?? []}
           />
         </div>
       </div>

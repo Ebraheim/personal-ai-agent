@@ -57,10 +57,28 @@ function parseSuggestions(text: string) {
         .replace(/^\s*\d+[.)]\s*/, "")
         .trim()
     )
-    .filter(Boolean)
-    .filter((line) => line.endsWith("?"));
+    .filter(Boolean);
 
-  return [...new Set(lines)].slice(0, 4);
+  const questions = lines
+    .map((line) => {
+      if (line.endsWith("?")) {
+        return line;
+      }
+
+      // If Gemini returns a valid-looking question without "?", keep it.
+      if (
+        /^(what|which|who|where|when|why|how|can|could|do|does|did|is|are|was|were|tell|show|explain)/i.test(
+          line
+        )
+      ) {
+        return `${line}?`;
+      }
+
+      return "";
+    })
+    .filter(Boolean);
+
+  return [...new Set(questions)].slice(0, 4);
 }
 
 export async function GET() {
@@ -81,12 +99,28 @@ export async function GET() {
         "Suggestion profile fetch error:",
         profileError
       );
+
+      return Response.json(
+        {
+          suggestions: [],
+          error: profileError.message,
+        },
+        {
+          status: 500,
+        }
+      );
     }
 
     if (!profile) {
-      return Response.json({
-        suggestions: [],
-      });
+      return Response.json(
+        {
+          suggestions: [],
+          error: "No public profile was found.",
+        },
+        {
+          status: 404,
+        }
+      );
     }
 
     const ownerId = profile.id;
@@ -102,7 +136,9 @@ export async function GET() {
     ] = await Promise.all([
       supabase
         .from("projects")
-        .select("title, short_description, full_description, technologies, status")
+        .select(
+          "title, short_description, full_description, technologies, status"
+        )
         .eq("user_id", ownerId)
         .eq("is_visible", true)
         .order("display_order", { ascending: true }),
@@ -145,11 +181,37 @@ export async function GET() {
       supabase
         .from("site_content")
         .select(
-          "about_heading, about_secondary_text, projects_description, contact_heading, contact_description"
+          `
+          about_heading,
+          about_primary_text,
+          about_secondary_text,
+          projects_description,
+          skills_description,
+          certifications_description,
+          contact_heading,
+          contact_description
+          `
         )
         .eq("user_id", ownerId)
         .maybeSingle(),
     ]);
+
+    const queryErrors = [
+      projectsResult.error,
+      skillsResult.error,
+      certificationsResult.error,
+      careerFocusResult.error,
+      knowledgeResult.error,
+      highlightsResult.error,
+      siteContentResult.error,
+    ].filter(Boolean);
+
+    if (queryErrors.length > 0) {
+      console.error(
+        "Suggestion data fetch errors:",
+        queryErrors
+      );
+    }
 
     const context = `
 PROFILE
@@ -174,7 +236,9 @@ SKILLS
 ${(skillsResult.data ?? [])
   .map(
     (item) =>
-      `${cleanText(item.title)}: ${cleanText(item.description)}`
+      `${cleanText(item.title)}: ${cleanText(
+        item.description
+      )}`
   )
   .join("\n")}
 
@@ -209,18 +273,38 @@ ${(knowledgeResult.data ?? [])
   .join("\n")}
 
 WEBSITE TEXT
-${siteContentResult.data
-  ? [
-      cleanText(siteContentResult.data.about_heading),
-      cleanText(siteContentResult.data.about_secondary_text),
-      cleanText(siteContentResult.data.projects_description),
-      cleanText(siteContentResult.data.contact_heading),
-      cleanText(siteContentResult.data.contact_description),
-    ]
-      .filter(Boolean)
-      .join("\n")
-  : ""}
-`.trim();
+${
+  siteContentResult.data
+    ? [
+        cleanText(siteContentResult.data.about_heading),
+        cleanText(siteContentResult.data.about_primary_text),
+        cleanText(siteContentResult.data.about_secondary_text),
+        cleanText(siteContentResult.data.projects_description),
+        cleanText(siteContentResult.data.skills_description),
+        cleanText(
+          siteContentResult.data.certifications_description
+        ),
+        cleanText(siteContentResult.data.contact_heading),
+        cleanText(siteContentResult.data.contact_description),
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : ""
+}
+    `.trim();
+
+    if (!context.replace(/\s/g, "")) {
+      return Response.json(
+        {
+          suggestions: [],
+          error:
+            "There is not enough website information to generate suggestions yet.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
     const prompt = `
 Using only the verified website information below, generate exactly 4 useful questions a visitor would naturally want to ask the website's AI assistant.
@@ -242,25 +326,54 @@ Rules:
 VERIFIED WEBSITE INFORMATION:
 
 ${context}
-`;
+    `.trim();
 
     const response = await generateWithRetry(prompt);
 
-    const suggestions = parseSuggestions(
-      response.text ?? ""
-    );
+    const rawText = response.text ?? "";
+    const suggestions = parseSuggestions(rawText);
+
+    if (suggestions.length === 0) {
+      console.error(
+        "Gemini returned text but no suggestions could be parsed:",
+        rawText
+      );
+
+      return Response.json(
+        {
+          suggestions: [],
+          error:
+            "Gemini responded, but no valid suggested questions could be parsed.",
+          rawText,
+        },
+        {
+          status: 500,
+        }
+      );
+    }
 
     return Response.json({
       suggestions,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(
       "AI SUGGESTIONS API ERROR:",
       error
     );
 
-    return Response.json({
-      suggestions: [],
-    });
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown AI suggestions error";
+
+    return Response.json(
+      {
+        suggestions: [],
+        error: message,
+      },
+      {
+        status: 500,
+      }
+    );
   }
 }

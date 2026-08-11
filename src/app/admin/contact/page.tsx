@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import ProjectsManager from "./ProjectsManager";
+import ContactManager from "./ContactManager";
 
-export default async function AdminProjectsPage() {
+export default async function AdminContactPage() {
   const supabase = await createClient();
 
   const {
@@ -13,22 +13,17 @@ export default async function AdminProjectsPage() {
     redirect("/admin");
   }
 
-  const [{ data: projects }, { data: siteContent }] = await Promise.all([
-    supabase
-      .from("projects")
-      .select(
-        "id, title, short_description, full_description, technologies, project_url, github_url, status, display_order, is_visible"
-      )
-      .eq("user_id", user.id)
-      .order("display_order", { ascending: true })
-      .order("created_at", { ascending: false }),
-
+  const [{ data: siteContent }, { data: profile }] = await Promise.all([
     supabase
       .from("site_content")
-      .select(
-        "projects_label, projects_heading, projects_description"
-      )
+      .select("contact_label, contact_heading, contact_description")
       .eq("user_id", user.id)
+      .maybeSingle(),
+
+    supabase
+      .from("profiles")
+      .select("location, email, linkedin_url, github_url")
+      .eq("id", user.id)
       .maybeSingle(),
   ]);
 
@@ -45,37 +40,39 @@ export default async function AdminProjectsPage() {
         <div className="mt-8 flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-              Projects Section
+              Contact Section
             </p>
 
             <h1 className="text-4xl font-bold md:text-5xl">
-              Edit Projects
+              Edit Contact
             </h1>
 
             <p className="mt-4 max-w-2xl text-white/50">
-              Everything here controls the Projects section shown on your public
-              website.
+              Control the contact text and contact links shown on your public website.
             </p>
           </div>
 
           <a
-            href="/#projects"
+            href="/#contact"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm text-white/60 transition hover:border-cyan-300/30 hover:text-white"
           >
-            Preview Projects ↗
+            Preview Contact ↗
           </a>
         </div>
 
         <div className="mt-10">
-          <ProjectsManager
+          <ContactManager
             userId={user.id}
-            initialProjects={projects ?? []}
-            initialSectionContent={{
-              projects_label: siteContent?.projects_label ?? "",
-              projects_heading: siteContent?.projects_heading ?? "",
-              projects_description: siteContent?.projects_description ?? "",
+            initialContent={{
+              contact_label: siteContent?.contact_label ?? "",
+              contact_heading: siteContent?.contact_heading ?? "",
+              contact_description: siteContent?.contact_description ?? "",
+              location: profile?.location ?? "",
+              email: profile?.email ?? user.email ?? "",
+              linkedin_url: profile?.linkedin_url ?? "",
+              github_url: profile?.github_url ?? "",
             }}
           />
         </div>
