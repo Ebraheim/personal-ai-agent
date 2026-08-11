@@ -1,11 +1,268 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  getPublicCareerFocus,
+  getPublicCertifications,
+  getPublicHeroHighlights,
+  getPublicProfile,
+  getPublicProjects,
+  getPublicSiteContent,
+  getPublicSections,
+  getPublicSkills,
+} from "@/data/publicData";
+
+type PublicProfile = {
+  id: string;
+  full_name: string | null;
+  professional_title: string | null;
+  hero_tagline: string | null;
+  bio: string | null;
+  location: string | null;
+  email: string | null;
+  linkedin_url: string | null;
+  github_url: string | null;
+};
+
+type PublicProject = {
+  id: string;
+  title: string;
+  short_description: string | null;
+  full_description: string | null;
+  technologies: string | null;
+  project_url: string | null;
+  github_url: string | null;
+  status: string;
+  display_order: number;
+  is_visible: boolean;
+};
+
+type PublicCertification = {
+  id: string;
+  title: string;
+  issuer: string | null;
+  credential_url: string | null;
+  status: string;
+  issue_date: string | null;
+  expiry_date: string | null;
+  display_order: number;
+  is_visible: boolean;
+};
+
+
+type PublicSkill = {
+  id: string;
+  title: string;
+  description: string;
+  display_order: number;
+  is_visible: boolean;
+};
+
+type PublicCareerFocus = {
+  id: string;
+  title: string;
+  display_order: number;
+  is_visible: boolean;
+};
+
+type PublicHeroHighlight = {
+  id: string;
+  label: string;
+  display_order: number;
+  is_visible: boolean;
+};
+
+type PublicSiteContent = {
+  id: string;
+  user_id: string;
+  about_label: string | null;
+  about_heading: string | null;
+  about_secondary_text: string | null;
+  projects_label: string | null;
+  projects_description: string | null;
+  contact_label: string | null;
+  contact_heading: string | null;
+  contact_description: string | null;
+};
+
+type PublicSection = {
+  id: string;
+  section_key: string;
+  label: string;
+  display_order: number;
+  is_visible: boolean;
+};
 
 export default function Home() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [activeSection, setActiveSection] = useState("home");
+  const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [projects, setProjects] = useState<PublicProject[]>([]);
+  const [certifications, setCertifications] = useState<PublicCertification[]>([]);
+  const [skills, setSkills] = useState<PublicSkill[]>([]);
+  const [careerFocus, setCareerFocus] = useState<PublicCareerFocus[]>([]);
+  const [heroHighlights, setHeroHighlights] = useState<PublicHeroHighlight[]>([]);
+  const [siteContent, setSiteContent] = useState<PublicSiteContent | null>(null);
+  const [sections, setSections] = useState<PublicSection[]>([]);
+  const [cvUrl, setCvUrl] = useState<string>("");
+  const [publicDataLoaded, setPublicDataLoaded] = useState(false);
+
+  // Load the correct active nav item if the page opens with a hash.
+  useEffect(() => {
+    const hash = window.location.hash.replace("#", "");
+
+    if (hash) {
+      setActiveSection(hash);
+    }
+  }, []);
+
+
+  // Load public website content from Supabase.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPublicData() {
+      try {
+        const [
+          profileData,
+          projectsData,
+          certificationsData,
+          skillsData,
+          careerFocusData,
+          heroHighlightsData,
+          siteContentData,
+          sectionsData,
+        ] = await Promise.all([
+          getPublicProfile(),
+          getPublicProjects(),
+          getPublicCertifications(),
+          getPublicSkills(),
+          getPublicCareerFocus(),
+          getPublicHeroHighlights(),
+          getPublicSiteContent(),
+          getPublicSections(),
+        ]);
+
+        if (cancelled) return;
+
+        setProfile(profileData as PublicProfile | null);
+        setProjects((projectsData ?? []) as PublicProject[]);
+        setCertifications((certificationsData ?? []) as PublicCertification[]);
+        setSkills((skillsData ?? []) as PublicSkill[]);
+        setCareerFocus((careerFocusData ?? []) as PublicCareerFocus[]);
+        setHeroHighlights((heroHighlightsData ?? []) as PublicHeroHighlight[]);
+        setSiteContent(siteContentData as PublicSiteContent | null);
+        setSections((sectionsData ?? []) as PublicSection[]);
+      } catch (error) {
+        console.error("Public data load error:", error);
+      } finally {
+        if (!cancelled) {
+          setPublicDataLoaded(true);
+        }
+      }
+    }
+
+    loadPublicData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Load a short-lived download URL for the latest CV stored in Supabase.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCvUrl() {
+      try {
+        const response = await fetch("/api/public-cv", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        if (!cancelled && data.url) {
+          setCvUrl(data.url);
+        }
+      } catch (error) {
+        console.error("CV URL load error:", error);
+      }
+    }
+
+    loadCvUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Ask the AI for owner-specific suggested questions.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSuggestions() {
+      try {
+        const response = await fetch("/api/chat/suggestions", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        if (!cancelled && Array.isArray(data.suggestions)) {
+          setSuggestions(
+            data.suggestions
+              .filter(
+                (item: unknown): item is string =>
+                  typeof item === "string" && item.trim().length > 0
+              )
+              .slice(0, 4)
+          );
+        }
+      } catch (error) {
+        console.error("AI suggestions load error:", error);
+      }
+    }
+
+    loadSuggestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Scroll reveal animation.
+  useEffect(() => {
+    const elements = document.querySelectorAll(".reveal");
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        threshold: 0.12,
+      }
+    );
+
+    elements.forEach((element) => observer.observe(element));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   async function askAgent() {
     if (!question.trim()) return;
@@ -39,580 +296,784 @@ export default function Home() {
     }
   }
 
+  const buttonClass =
+    "rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-7 py-3.5 font-medium text-cyan-200 transition duration-300 hover:-translate-y-1 hover:bg-cyan-300/20 hover:text-white";
+
+  const contactButtonClass =
+    "rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-6 py-3 font-medium text-cyan-200 transition duration-300 hover:-translate-y-1 hover:bg-cyan-300/20 hover:text-white";
+
+  const normalNavClass =
+    "rounded-lg border border-transparent px-4 py-2 text-white/60 transition hover:border-white/10 hover:bg-white/5 hover:text-white";
+
+  const activeNavClass =
+    "rounded-lg border border-cyan-300/40 bg-cyan-300/10 px-4 py-2 text-cyan-200 transition";
+
+  const sectionConfig = (key: string, fallbackLabel: string) => {
+    const section = sections.find((item) => item.section_key === key);
+
+    return {
+      label: section?.label || fallbackLabel,
+      visible: section ? section.is_visible : true,
+    };
+  };
+
+  const projectsSection = sectionConfig("projects", "Projects");
+  const skillsSection = sectionConfig("skills", "Skills");
+  const certificationsSection = sectionConfig(
+    "certifications",
+    "Certifications"
+  );
+  const aboutSection = sectionConfig("about", "About");
+  const agentSection = sectionConfig("agent", "AI Agent");
+  const contactSection = sectionConfig("contact", "Contact");
+
+  const heroTitle =
+    profile?.professional_title || "Computer & Autonomous Systems Engineer";
+  const heroTagline =
+    profile?.hero_tagline || "AI • Robotics • Autonomous Systems";
+  const heroName = profile?.full_name || "Ebraheim Mohamed Pasha Qadri";
+  const heroBio =
+    profile?.bio ||
+    "I build practical AI, robotics, autonomous systems, and intelligent software projects with a focus on systems that can be tested, explained, and improved.";
+
+  const email = profile?.email || "ebraheimpasha@gmail.com";
+  const linkedIn =
+    profile?.linkedin_url || "https://linkedin.com/in/ebraheim13ae";
+  const github = profile?.github_url || "https://github.com/Ebraheim";
+
+  const aboutLabel = siteContent?.about_label || "About Me";
+  const aboutHeading =
+    siteContent?.about_heading || "Building practical AI and autonomous systems.";
+  const aboutSecondaryText =
+    siteContent?.about_secondary_text ||
+    "My work spans ROS-based robotics, AI systems, backend development, embedded systems, and agentic AI applications. I prefer building systems I can test, explain, and improve.";
+
+  const projectsLabel = siteContent?.projects_label || "Selected Work";
+  const projectsDescription =
+    siteContent?.projects_description ||
+    "Practical engineering work across robotics, AI, backend systems, cybersecurity, and agentic applications.";
+
+  const contactLabel = siteContent?.contact_label || "Contact";
+  const contactHeading =
+    siteContent?.contact_heading || "Let's build something useful.";
+  const contactDescription =
+    siteContent?.contact_description ||
+    "I am open to opportunities in robotics, autonomous systems, AI engineering, and intelligent software development. If my work matches what your team is building, feel free to get in touch.";
+
   return (
-    <main id="home" className="min-h-screen overflow-hidden">
-      {/* NAVBAR */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#070b12]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <a
-            href="#home"
-            className="text-lg font-semibold tracking-tight text-white transition hover:text-cyan-300"
-          >
-            Ebraheim Qadri
-          </a>
+    <>
+      {/* SCROLL ANIMATION STYLES */}
+      <style jsx global>{`
+        .reveal {
+          opacity: 0;
+          transform: translateY(28px);
+          transition:
+            opacity 0.75s ease,
+            transform 0.75s ease;
+        }
 
-          <nav className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2 text-sm text-white/60">
+        .reveal.is-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .reveal {
+            opacity: 1;
+            transform: none;
+            transition: none;
+          }
+        }
+      `}</style>
+
+      <main className="min-h-screen overflow-hidden">
+        {/* NAVBAR */}
+        <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#070b12]/90 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
             <a
-              className="transition hover:text-cyan-300"
-              href="#projects"
+              href="#home"
+              onClick={() => setActiveSection("home")}
+              className={`text-lg font-semibold tracking-tight transition ${
+                activeSection === "home"
+                  ? "text-cyan-300"
+                  : "text-white hover:text-cyan-300"
+              }`}
             >
-              Projects
+              {profile?.full_name ? profile.full_name.split(" ")[0] + " " + profile.full_name.split(" ").slice(-1)[0] : "Ebraheim Qadri"}
             </a>
 
-            <a
-              className="transition hover:text-cyan-300"
-              href="#skills"
-            >
-              Skills
-            </a>
+            <nav className="flex flex-wrap items-center justify-end gap-2 text-sm">
+              {projectsSection.visible && (
+              <a
+                href="#projects"
+                onClick={() => setActiveSection("projects")}
+                className={
+                  activeSection === "projects"
+                    ? activeNavClass
+                    : normalNavClass
+                }
+              >
+                {projectsSection.label}
+              </a>
+              )}
 
-            <a
-              className="transition hover:text-cyan-300"
-              href="#certifications"
-            >
-              Certifications
-            </a>
+              {skillsSection.visible && (
+              <a
+                href="#skills"
+                onClick={() => setActiveSection("skills")}
+                className={
+                  activeSection === "skills" ? activeNavClass : normalNavClass
+                }
+              >
+                {skillsSection.label}
+              </a>
+              )}
 
-            <a
-              className="transition hover:text-cyan-300"
-              href="#about"
-            >
-              About
-            </a>
+              {certificationsSection.visible && (
+              <a
+                href="#certifications"
+                onClick={() => setActiveSection("certifications")}
+                className={
+                  activeSection === "certifications"
+                    ? activeNavClass
+                    : normalNavClass
+                }
+              >
+                {certificationsSection.label}
+              </a>
+              )}
 
-            <a
-              className="transition hover:text-cyan-300"
-              href="#agent"
-            >
-              AI Agent
-            </a>
+              {aboutSection.visible && (
+              <a
+                href="#about"
+                onClick={() => setActiveSection("about")}
+                className={
+                  activeSection === "about" ? activeNavClass : normalNavClass
+                }
+              >
+                {aboutSection.label}
+              </a>
+              )}
 
-            <a
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 transition hover:border-cyan-300/40 hover:bg-white/10 hover:text-white"
-              href="#contact"
-            >
-              Contact
-            </a>
-          </nav>
-        </div>
-      </header>
+              {agentSection.visible && (
+              <a
+                href="#agent"
+                onClick={() => setActiveSection("agent")}
+                className={
+                  activeSection === "agent" ? activeNavClass : normalNavClass
+                }
+              >
+                {agentSection.label}
+              </a>
+              )}
 
-      {/* HERO */}
-      <section className="relative flex min-h-[90vh] items-center px-6">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute left-[5%] top-[15%] h-80 w-80 rounded-full bg-cyan-400/10 blur-[100px]" />
-          <div className="absolute right-[5%] top-[20%] h-96 w-96 rounded-full bg-violet-500/10 blur-[120px]" />
-          <div className="absolute bottom-[10%] left-[40%] h-64 w-64 rounded-full bg-blue-500/5 blur-[100px]" />
-        </div>
+              {contactSection.visible && (
+              <a
+                href="#contact"
+                onClick={() => setActiveSection("contact")}
+                className={
+                  activeSection === "contact" ? activeNavClass : normalNavClass
+                }
+              >
+                {contactSection.label}
+              </a>
+              )}
+            </nav>
+          </div>
+        </header>
 
-        <div className="relative mx-auto max-w-5xl text-center">
-          <div className="mb-6 inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/5 px-5 py-2 text-xs uppercase tracking-[0.3em] text-cyan-300">
-            Computer & Autonomous Systems Engineer
+        {/* HERO */}
+        <section
+          id="home"
+          className="relative flex min-h-[90vh] items-center px-6 pt-24"
+        >
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-[5%] top-[15%] h-80 w-80 rounded-full bg-cyan-400/10 blur-[100px]" />
+            <div className="absolute right-[5%] top-[20%] h-96 w-96 rounded-full bg-violet-500/10 blur-[120px]" />
+            <div className="absolute bottom-[10%] left-[40%] h-64 w-64 rounded-full bg-blue-500/5 blur-[100px]" />
           </div>
 
-          <p className="mb-6 text-sm font-medium tracking-wide text-white/50">
-            AI • Robotics • Autonomous Systems
-          </p>
-
-          <h1 className="mb-7 bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-5xl font-bold tracking-tight text-transparent md:text-7xl">
-            Ebraheim Mohamed
-            <br className="hidden md:block" /> Pasha Qadri
-          </h1>
-
-          <p className="mx-auto mb-10 max-w-3xl text-lg leading-8 text-white/60 md:text-xl">
-            I build practical AI, robotics, autonomous systems, and intelligent
-            software projects with a focus on systems that can be tested,
-            explained, and improved.
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-4">
-            <a
-  href="#projects"
-  className="rounded-xl bg-white px-7 py-3.5 font-medium text-black transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-cyan-500/10"
->
-  View Projects
-</a>
-
-            <a
-              href="#agent"
-              className="rounded-xl border border-white/15 bg-white/5 px-7 py-3.5 font-medium text-white transition duration-300 hover:-translate-y-1 hover:border-cyan-300/30 hover:bg-white/10"
-            >
-              Ask My AI Agent
-            </a>
-          </div>
-
-          <div className="mt-16 flex flex-wrap justify-center gap-8 text-sm text-white/40">
-            <span>ROS & SLAM</span>
-            <span>AI Systems</span>
-            <span>Computer Vision</span>
-            <span>Backend Development</span>
-            <span>Agentic AI</span>
-          </div>
-        </div>
-      </section>
-
-      {/* PROJECTS */}
-      <section
-        id="projects"
-        className="border-t border-white/10 bg-white/[0.015] px-6 py-24"
-      >
-        <div className="mx-auto max-w-6xl">
-          <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-            Selected Work
-          </p>
-
-          <div className="mb-12 flex flex-wrap items-end justify-between gap-5">
-            <div>
-              <h2 className="text-4xl font-bold md:text-5xl">Projects</h2>
-              <p className="mt-4 max-w-2xl text-white/50">
-                Practical engineering work across robotics, AI, backend
-                systems, cybersecurity, and agentic applications.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* PROJECT 1 */}
-            <div className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/30 hover:bg-white/[0.055]">
-              <div className="mb-5 inline-flex rounded-lg border border-cyan-300/15 bg-cyan-300/5 px-3 py-1 text-xs text-cyan-300">
-                Robotics
-              </div>
-
-              <h3 className="mb-4 text-2xl font-semibold">
-                Swarm Robotics for Indoor Safety
-              </h3>
-
-              <p className="mb-6 leading-7 text-white/55">
-                ROS and SLAM-based multi-robot system for indoor exploration,
-                mapping, localization, navigation, and hazard detection.
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                {["ROS", "SLAM", "TurtleBot3", "CNN", "Multi-Robot"].map(
-                  (item) => (
-                    <span
-                      key={item}
-                      className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50"
-                    >
-                      {item}
-                    </span>
-                  )
-                )}
-              </div>
+          <div className="relative mx-auto max-w-5xl text-center">
+            <div className="mb-6 inline-flex rounded-full border border-cyan-300/20 bg-cyan-300/5 px-5 py-2 text-xs uppercase tracking-[0.3em] text-cyan-300">
+              {heroTitle}
             </div>
 
-            {/* PROJECT 2 */}
-            <div className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-violet-300/30 hover:bg-white/[0.055]">
-              <div className="mb-5 inline-flex rounded-lg border border-violet-300/15 bg-violet-300/5 px-3 py-1 text-xs text-violet-300">
-                Artificial Intelligence
-              </div>
+            <p className="mb-6 text-sm font-medium tracking-wide text-white/50">
+              {heroTagline}
+            </p>
 
-              <h3 className="mb-4 text-2xl font-semibold">
-                AI SOC Triage Copilot Lite
-              </h3>
+            <h1 className="mb-7 bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-5xl font-bold tracking-tight text-transparent md:text-7xl">
+              {heroName}
+            </h1>
 
-              <p className="mb-6 leading-7 text-white/55">
-                AI-based cybersecurity system for alert triage, contextual
-                analysis, MITRE ATT&CK mapping, risk scoring, and investigation
-                guidance.
-              </p>
+            <p className="mx-auto mb-10 max-w-3xl text-lg leading-8 text-white/60 md:text-xl">
+              {heroBio}
+            </p>
 
-              <div className="flex flex-wrap gap-2">
-                {["AI", "Cybersecurity", "MITRE ATT&CK", "Reasoning"].map(
-                  (item) => (
-                    <span
-                      key={item}
-                      className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50"
-                    >
-                      {item}
-                    </span>
-                  )
-                )}
+            <div className="flex flex-wrap justify-center gap-4">
+              {projectsSection.visible && (
+                <a
+                  href="#projects"
+                  onClick={() => setActiveSection("projects")}
+                  className={buttonClass}
+                >
+                  View Projects
+                </a>
+              )}
+
+              {agentSection.visible && (
+                <a
+                  href="#agent"
+                  onClick={() => setActiveSection("agent")}
+                  className={buttonClass}
+                >
+                  Ask My AI Agent
+                </a>
+              )}
+            </div>
+
+            <div className="mt-16 flex flex-wrap justify-center gap-8 text-sm text-white/40">
+              {publicDataLoaded && heroHighlights.length > 0 ? (
+                heroHighlights.map((item) => (
+                  <span key={item.id}>{item.label}</span>
+                ))
+              ) : (
+                <>
+                  <span>ROS & SLAM</span>
+                  <span>AI Systems</span>
+                  <span>Computer Vision</span>
+                  <span>Backend Development</span>
+                  <span>Agentic AI</span>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* PROJECTS */}
+        {projectsSection.visible && (
+        <section
+          id="projects"
+          className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-24"
+        >
+          <div className="mx-auto max-w-6xl">
+            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+              {projectsLabel}
+            </p>
+
+            <div className="mb-12 flex flex-wrap items-end justify-between gap-5">
+              <div>
+                <h2 className="text-4xl font-bold md:text-5xl">Projects</h2>
+
+                <p className="mt-4 max-w-2xl text-white/50">
+                  {projectsDescription}
+                </p>
               </div>
             </div>
 
-            {/* PROJECT 3 */}
-            <div className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-blue-300/30 hover:bg-white/[0.055]">
-              <div className="mb-5 inline-flex rounded-lg border border-blue-300/15 bg-blue-300/5 px-3 py-1 text-xs text-blue-300">
-                Backend
-              </div>
-
-              <h3 className="mb-4 text-2xl font-semibold">Task API</h3>
-
-              <p className="mb-6 leading-7 text-white/55">
-                Internship backend project demonstrating CRUD operations,
-                validation, HTTP status codes, Swagger documentation, Git, and
-                GitHub.
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                {["Node.js", "Express", "Swagger", "REST API"].map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50"
+            <div className="grid gap-6 md:grid-cols-2">
+              {publicDataLoaded && projects.length > 0 ? (
+                projects.map((project) => (
+                  <article
+                    key={project.id}
+                    className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/30 hover:bg-white/[0.055]"
                   >
-                    {item}
-                  </span>
+                    <div className="mb-5 inline-flex rounded-lg border border-cyan-300/15 bg-cyan-300/5 px-3 py-1 text-xs capitalize text-cyan-300">
+                      {project.status.replaceAll("-", " ")}
+                    </div>
+
+                    <h3 className="mb-4 text-2xl font-semibold">
+                      {project.title}
+                    </h3>
+
+                    <p className="mb-6 leading-7 text-white/55">
+                      {project.short_description ||
+                        project.full_description ||
+                        "Project details available in the portfolio manager."}
+                    </p>
+
+                    {project.technologies && (
+                      <div className="flex flex-wrap gap-2">
+                        {project.technologies
+                          .split(",")
+                          .map((item) => item.trim())
+                          .filter(Boolean)
+                          .map((item) => (
+                            <span
+                              key={item}
+                              className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50"
+                            >
+                              {item}
+                            </span>
+                          ))}
+                      </div>
+                    )}
+
+                    {(project.project_url || project.github_url) && (
+                      <div className="mt-6 flex flex-wrap gap-3">
+                        {project.project_url && (
+                          <a
+                            href={project.project_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-cyan-300 transition hover:text-cyan-200"
+                          >
+                            View Project ↗
+                          </a>
+                        )}
+                        {project.github_url && (
+                          <a
+                            href={project.github_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-white/50 transition hover:text-white"
+                          >
+                            GitHub ↗
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                ))
+              ) : (
+                <>
+                  <div className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/30 hover:bg-white/[0.055]">
+                    <div className="mb-5 inline-flex rounded-lg border border-cyan-300/15 bg-cyan-300/5 px-3 py-1 text-xs text-cyan-300">Robotics</div>
+                    <h3 className="mb-4 text-2xl font-semibold">Swarm Robotics for Indoor Safety</h3>
+                    <p className="mb-6 leading-7 text-white/55">ROS and SLAM-based multi-robot system for indoor exploration, mapping, localization, navigation, and hazard detection.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["ROS", "SLAM", "TurtleBot3", "CNN", "Multi-Robot"].map((item) => (
+                        <span key={item} className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-violet-300/30 hover:bg-white/[0.055]">
+                    <div className="mb-5 inline-flex rounded-lg border border-violet-300/15 bg-violet-300/5 px-3 py-1 text-xs text-violet-300">Artificial Intelligence</div>
+                    <h3 className="mb-4 text-2xl font-semibold">AI SOC Triage Copilot Lite</h3>
+                    <p className="mb-6 leading-7 text-white/55">AI-based cybersecurity system for alert triage, contextual analysis, MITRE ATT&CK mapping, risk scoring, and investigation guidance.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["AI", "Cybersecurity", "MITRE ATT&CK", "Reasoning"].map((item) => (
+                        <span key={item} className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="group rounded-2xl border border-white/10 bg-white/[0.035] p-7 transition duration-300 hover:-translate-y-1 hover:border-blue-300/30 hover:bg-white/[0.055]">
+                    <div className="mb-5 inline-flex rounded-lg border border-blue-300/15 bg-blue-300/5 px-3 py-1 text-xs text-blue-300">Backend</div>
+                    <h3 className="mb-4 text-2xl font-semibold">Task API</h3>
+                    <p className="mb-6 leading-7 text-white/55">Internship backend project demonstrating CRUD operations, validation, HTTP status codes, Swagger documentation, Git, and GitHub.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Node.js", "Express", "Swagger", "REST API"].map((item) => (
+                        <span key={item} className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="group relative overflow-hidden rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[0.07] to-violet-500/[0.05] p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/40">
+                    <div className="absolute right-0 top-0 rounded-bl-xl bg-cyan-300 px-3 py-1 text-xs font-medium text-black">CURRENT BUILD</div>
+                    <div className="mb-5 inline-flex rounded-lg border border-cyan-300/15 bg-cyan-300/5 px-3 py-1 text-xs text-cyan-300">Agentic AI</div>
+                    <h3 className="mb-4 text-2xl font-semibold">Personal AI Agent</h3>
+                    <p className="mb-6 leading-7 text-white/55">Recruiter-facing AI system combining a personal brand website, verified knowledge base, retrieval, Gemini integration, and grounded responses.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Next.js", "Gemini", "Retrieval", "Agents", "RAG"].map((item) => (
+                        <span key={item} className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+        )}
+
+        {/* SKILLS */}
+        {skillsSection.visible && (
+        <section
+          id="skills"
+          className="reveal border-t border-white/10 px-6 py-24"
+        >
+          <div className="mx-auto max-w-6xl">
+            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+              Technical Toolkit
+            </p>
+
+            <h2 className="mb-12 text-4xl font-bold md:text-5xl">Skills</h2>
+
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {publicDataLoaded && skills.length > 0
+                ? skills.map((skill) => (
+                    <div
+                      key={skill.id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                    >
+                      <h3 className="mb-3 text-lg font-semibold">
+                        {skill.title}
+                      </h3>
+                      <p className="leading-7 text-white/50">
+                        {skill.description}
+                      </p>
+                    </div>
+                  ))
+                : [
+                    {
+                      title: "Robotics & Autonomous Systems",
+                      text: "ROS, SLAM, TurtleBot3, Multi-Robot Systems, Task Allocation, Autonomous Navigation",
+                    },
+                    {
+                      title: "AI & Computer Vision",
+                      text: "PyTorch, OpenCV, CNNs, Image Processing, AI Reasoning, Anomaly Detection",
+                    },
+                    {
+                      title: "Programming",
+                      text: "Python, C++, Java, MATLAB, JavaScript, TypeScript",
+                    },
+                    {
+                      title: "Backend & APIs",
+                      text: "Node.js, Express, REST APIs, Swagger, HTTP, Validation, Git & GitHub",
+                    },
+                    {
+                      title: "AI Application Development",
+                      text: "Prompt Engineering, Retrieval, RAG, AI APIs, MCP, Agent Skills, Structured Outputs",
+                    },
+                    {
+                      title: "Embedded & Automation",
+                      text: "Arduino, Raspberry Pi, PLC Programming, Sensors, Control Systems",
+                    },
+                  ].map((skill) => (
+                    <div
+                      key={skill.title}
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                    >
+                      <h3 className="mb-3 text-lg font-semibold">
+                        {skill.title}
+                      </h3>
+                      <p className="leading-7 text-white/50">{skill.text}</p>
+                    </div>
+                  ))}
+            </div>
+          </div>
+        </section>
+        )}
+
+        {/* CERTIFICATIONS */}
+        {certificationsSection.visible && (
+        <section
+          id="certifications"
+          className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-24"
+        >
+          <div className="mx-auto max-w-6xl">
+            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+              Certifications
+            </p>
+
+            <h2 className="mb-12 text-4xl font-bold md:text-5xl">
+              AI & Technical Learning
+            </h2>
+
+            {publicDataLoaded && certifications.length > 0 ? (
+              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {certifications.map((certification) => (
+                  <article
+                    key={certification.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                  >
+                    <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
+                      {certification.status.replaceAll("-", " ")}
+                    </p>
+                    <h3 className="mt-3 text-xl font-semibold">
+                      {certification.title}
+                    </h3>
+                    {certification.issuer && (
+                      <p className="mt-2 text-sm text-white/45">
+                        {certification.issuer}
+                      </p>
+                    )}
+                    {certification.issue_date && (
+                      <p className="mt-4 text-xs text-white/30">
+                        Issued {certification.issue_date}
+                      </p>
+                    )}
+                    {certification.credential_url && (
+                      <a
+                        href={certification.credential_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-5 inline-block text-sm text-cyan-300 transition hover:text-cyan-200"
+                      >
+                        View Credential ↗
+                      </a>
+                    )}
+                  </article>
                 ))}
               </div>
-            </div>
+            ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-cyan-300/15 bg-gradient-to-br from-cyan-300/[0.05] to-transparent p-7">
+                <p className="mb-2 text-xs uppercase tracking-[0.2em] text-cyan-300">
+                  Priority
+                </p>
 
-            {/* PROJECT 4 */}
-            <div className="group relative overflow-hidden rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-cyan-400/[0.07] to-violet-500/[0.05] p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/40">
-              <div className="absolute right-0 top-0 rounded-bl-xl bg-cyan-300 px-3 py-1 text-xs font-medium text-black">
-                CURRENT BUILD
+                <h3 className="mb-6 text-2xl font-semibold">
+                  Featured Certifications
+                </h3>
+
+                <ul className="space-y-3 text-white/60">
+                  <li>✓ AI Fluency: Framework & Foundations</li>
+                  <li>✓ AI Fluency for Builders</li>
+                  <li>✓ Claude Code 101</li>
+                  <li>✓ Claude Code in Action</li>
+                  <li>✓ Claude Platform 101</li>
+                  <li>✓ Building with the Claude API</li>
+                  <li>✓ Introduction to Model Context Protocol</li>
+                  <li>✓ Model Context Protocol: Advanced Topics</li>
+                  <li>✓ Introduction to Agent Skills</li>
+                  <li>✓ Introduction to Subagents</li>
+                </ul>
               </div>
 
-              <div className="mb-5 inline-flex rounded-lg border border-cyan-300/15 bg-cyan-300/5 px-3 py-1 text-xs text-cyan-300">
-                Agentic AI
-              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-7">
+                <p className="mb-2 text-xs uppercase tracking-[0.2em] text-white/35">
+                  Additional Learning
+                </p>
 
-              <h3 className="mb-4 text-2xl font-semibold">
-                Personal AI Agent
-              </h3>
+                <h3 className="mb-6 text-2xl font-semibold">
+                  Additional AI Training
+                </h3>
 
-              <p className="mb-6 leading-7 text-white/55">
-                Recruiter-facing AI system combining a personal brand website,
-                verified knowledge base, retrieval, Gemini integration, and
-                grounded responses.
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                {["Next.js", "Gemini", "Retrieval", "Agents", "RAG"].map(
-                  (item) => (
-                    <span
-                      key={item}
-                      className="rounded-md bg-white/5 px-3 py-1 text-xs text-white/50"
-                    >
-                      {item}
-                    </span>
-                  )
-                )}
+                <ul className="space-y-3 text-white/55">
+                  <li>• Claude 101</li>
+                  <li>• Introduction to Claude Cowork</li>
+                  <li>• AI Capabilities and Limitations</li>
+                  <li>• Claude with Amazon Bedrock</li>
+                  <li>• Claude with Google Cloud&apos;s Vertex AI</li>
+                  <li>• AI Fluency for Students</li>
+                  <li>• AI Fluency for Educators</li>
+                  <li>• Teaching AI Fluency</li>
+                  <li>• AI Fluency for Nonprofits</li>
+                </ul>
               </div>
             </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+        )}
 
-      {/* SKILLS */}
-      <section id="skills" className="border-t border-white/10 px-6 py-24">
-        <div className="mx-auto max-w-6xl">
-          <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-            Technical Toolkit
-          </p>
-
-          <h2 className="mb-12 text-4xl font-bold md:text-5xl">Skills</h2>
-
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                title: "Robotics & Autonomous Systems",
-                text: "ROS, SLAM, TurtleBot3, Multi-Robot Systems, Task Allocation, Autonomous Navigation",
-              },
-              {
-                title: "AI & Computer Vision",
-                text: "PyTorch, OpenCV, CNNs, Image Processing, AI Reasoning, Anomaly Detection",
-              },
-              {
-                title: "Programming",
-                text: "Python, C++, Java, MATLAB, JavaScript, TypeScript",
-              },
-              {
-                title: "Backend & APIs",
-                text: "Node.js, Express, REST APIs, Swagger, HTTP, Validation, Git & GitHub",
-              },
-              {
-                title: "AI Application Development",
-                text: "Prompt Engineering, Retrieval, RAG, AI APIs, MCP, Agent Skills, Structured Outputs",
-              },
-              {
-                title: "Embedded & Automation",
-                text: "Arduino, Raspberry Pi, PLC Programming, Sensors, Control Systems",
-              },
-            ].map((skill) => (
-              <div
-                key={skill.title}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition duration-300 hover:border-cyan-300/25 hover:bg-white/[0.05]"
-              >
-                <h3 className="mb-3 text-lg font-semibold">{skill.title}</h3>
-                <p className="leading-7 text-white/50">{skill.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CERTIFICATIONS */}
-      <section
-        id="certifications"
-        className="border-t border-white/10 bg-white/[0.015] px-6 py-24"
-      >
-        <div className="mx-auto max-w-6xl">
-          <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-            Certifications
-          </p>
-
-          <h2 className="mb-12 text-4xl font-bold md:text-5xl">
-            AI & Technical Learning
-          </h2>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-cyan-300/15 bg-gradient-to-br from-cyan-300/[0.05] to-transparent p-7">
-              <p className="mb-2 text-xs uppercase tracking-[0.2em] text-cyan-300">
-                Priority
-              </p>
-
-              <h3 className="mb-6 text-2xl font-semibold">
-                Featured Certifications
-              </h3>
-
-              <ul className="space-y-3 text-white/60">
-                <li>✓ AI Fluency: Framework & Foundations</li>
-                <li>✓ AI Fluency for Builders</li>
-                <li>✓ Claude Code 101</li>
-                <li>✓ Claude Code in Action</li>
-                <li>✓ Claude Platform 101</li>
-                <li>✓ Building with the Claude API</li>
-                <li>✓ Introduction to Model Context Protocol</li>
-                <li>✓ Model Context Protocol: Advanced Topics</li>
-                <li>✓ Introduction to Agent Skills</li>
-                <li>✓ Introduction to Subagents</li>
-              </ul>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-7">
-              <p className="mb-2 text-xs uppercase tracking-[0.2em] text-white/35">
-                Additional Learning
-              </p>
-
-              <h3 className="mb-6 text-2xl font-semibold">
-                Additional AI Training
-              </h3>
-
-              <ul className="space-y-3 text-white/55">
-                <li>• Claude 101</li>
-                <li>• Introduction to Claude Cowork</li>
-                <li>• AI Capabilities and Limitations</li>
-                <li>• Claude with Amazon Bedrock</li>
-                <li>• Claude with Google Cloud&apos;s Vertex AI</li>
-                <li>• AI Fluency for Students</li>
-                <li>• AI Fluency for Educators</li>
-                <li>• Teaching AI Fluency</li>
-                <li>• AI Fluency for Nonprofits</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ABOUT */}
-      <section id="about" className="border-t border-white/10 px-6 py-24">
-        <div className="mx-auto max-w-6xl">
-          <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-            About Me
-          </p>
-
-          <h2 className="mb-12 max-w-3xl text-4xl font-bold leading-tight md:text-5xl">
-            Building practical AI and autonomous systems.
-          </h2>
-
-          <div className="grid gap-8 md:grid-cols-[1.5fr_1fr]">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
-              <p className="mb-6 text-lg leading-8 text-white/60">
-                I am a Computer & Autonomous Systems Engineer focused on AI,
-                robotics, autonomous navigation, and intelligent software
-                systems.
-              </p>
-
-              <p className="text-lg leading-8 text-white/60">
-                My work spans ROS-based robotics, AI systems, backend
-                development, embedded systems, and agentic AI applications. I
-                prefer building systems I can test, explain, and improve.
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.035] p-8">
-              <h3 className="mb-6 text-xl font-semibold">Career Focus</h3>
-
-              <ul className="space-y-4 text-white/60">
-                <li>→ Robotics Engineering</li>
-                <li>→ Autonomous Systems</li>
-                <li>→ AI Engineering</li>
-                <li>→ AI Application Development</li>
-                <li>→ Intelligent Backend Systems</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* AI AGENT */}
-      <section
-        id="agent"
-        className="relative border-t border-white/10 bg-white/[0.015] px-6 py-24"
-      >
-        <div className="pointer-events-none absolute right-[10%] top-[20%] h-72 w-72 rounded-full bg-cyan-400/5 blur-[100px]" />
-
-        <div className="relative mx-auto max-w-6xl">
-          <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-            Personal AI Agent
-          </p>
-
-          <h2 className="mb-5 text-4xl font-bold md:text-5xl">
-            Ask about my work.
-          </h2>
-
-          <p className="mb-10 max-w-3xl text-lg leading-8 text-white/55">
-            This AI agent answers questions about my projects, skills,
-            experience, certifications, and technical background using a
-            verified knowledge base and retrieval layer.
-          </p>
-
-          <div className="max-w-4xl rounded-3xl border border-white/10 bg-[#0b111b]/90 p-5 shadow-2xl shadow-black/30 md:p-8">
-            <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
-              <p className="mb-4 text-sm font-semibold text-cyan-300">
-                Try asking
-              </p>
-
-              <div className="grid gap-2 text-sm text-white/45 md:grid-cols-2">
-                <button
-                  onClick={() =>
-                    setQuestion(
-                      "What experience does Ebraheim have with ROS and SLAM?"
-                    )
-                  }
-                  className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left transition hover:bg-white/5 hover:text-white/70"
-                >
-                  What experience does Ebraheim have with ROS?
-                </button>
-
-                <button
-                  onClick={() =>
-                    setQuestion(
-                      "Which project best demonstrates autonomous systems work?"
-                    )
-                  }
-                  className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left transition hover:bg-white/5 hover:text-white/70"
-                >
-                  Which project best shows autonomous systems?
-                </button>
-
-                <button
-                  onClick={() =>
-                    setQuestion(
-                      "What AI and agent-related skills has Ebraheim learned?"
-                    )
-                  }
-                  className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left transition hover:bg-white/5 hover:text-white/70"
-                >
-                  What AI and agent skills has he learned?
-                </button>
-
-                <button
-                  onClick={() =>
-                    setQuestion("Tell me about Ebraheim's Task API project.")
-                  }
-                  className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left transition hover:bg-white/5 hover:text-white/70"
-                >
-                  Tell me about the Task API project.
-                </button>
-              </div>
-            </div>
-
-            <div className="mb-5 min-h-48 rounded-2xl border border-white/10 bg-black/20 p-5">
-              <p className="whitespace-pre-wrap text-sm leading-7 text-white/65">
-                {loading
-                  ? "Thinking..."
-                  : answer ||
-                    "Ask a question and the AI agent will answer using verified information."}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 md:flex-row">
-              <input
-                type="text"
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    askAgent();
-                  }
-                }}
-                placeholder="Ask a recruiter-style question..."
-                className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-4 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/40"
-              />
-
-              <button
-                type="button"
-                onClick={askAgent}
-                disabled={loading}
-                className="rounded-xl bg-cyan-300 px-7 py-4 font-semibold text-black transition duration-300 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading ? "Thinking..." : "Ask Agent"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CONTACT */}
-      <section id="contact" className="border-t border-white/10 px-6 py-24">
-        <div className="mx-auto max-w-6xl">
-          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent p-8 md:p-12">
+        {/* ABOUT */}
+        {aboutSection.visible && (
+        <section
+          id="about"
+          className="reveal border-t border-white/10 px-6 py-24"
+        >
+          <div className="mx-auto max-w-6xl">
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-              Contact
+              {aboutLabel}
+            </p>
+
+            <h2 className="mb-12 max-w-3xl text-4xl font-bold leading-tight md:text-5xl">
+              {aboutHeading}
+            </h2>
+
+            <div className="grid gap-8 md:grid-cols-[1.5fr_1fr]">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+                <p className="mb-6 text-lg leading-8 text-white/60">
+                  {profile?.bio ||
+                    "I am a Computer & Autonomous Systems Engineer focused on AI, robotics, autonomous navigation, and intelligent software systems."}
+                </p>
+
+                <p className="text-lg leading-8 text-white/60">
+                  {aboutSecondaryText}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.035] p-8">
+                <h3 className="mb-6 text-xl font-semibold">Career Focus</h3>
+
+                <ul className="space-y-4 text-white/60">
+                  {publicDataLoaded && careerFocus.length > 0 ? (
+                    careerFocus.map((item) => (
+                      <li key={item.id}>→ {item.title}</li>
+                    ))
+                  ) : (
+                    <>
+                      <li>→ Robotics Engineering</li>
+                      <li>→ Autonomous Systems</li>
+                      <li>→ AI Engineering</li>
+                      <li>→ AI Application Development</li>
+                      <li>→ Intelligent Backend Systems</li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+        )}
+
+        {/* AI AGENT */}
+        {agentSection.visible && (
+        <section
+          id="agent"
+          className="reveal relative border-t border-white/10 bg-white/[0.015] px-6 py-24"
+        >
+          <div className="pointer-events-none absolute right-[10%] top-[20%] h-72 w-72 rounded-full bg-cyan-400/5 blur-[100px]" />
+
+          <div className="relative mx-auto max-w-6xl">
+            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+              AI Assistant
             </p>
 
             <h2 className="mb-5 text-4xl font-bold md:text-5xl">
-              Let&apos;s build something useful.
+              Ask a question.
             </h2>
 
-            <p className="mb-9 max-w-3xl text-lg leading-8 text-white/55">
-              I am open to opportunities in robotics, autonomous systems, AI
-              engineering, and intelligent software development. If my work
-              matches what your team is building, feel free to get in touch.
+            <p className="mb-10 max-w-3xl text-lg leading-8 text-white/55">
+              This AI assistant answers questions using verified information
+              provided by the website owner.
             </p>
 
-            <div className="flex flex-wrap gap-4">
-              <a
-  href="mailto:ebraheimpasha@gmail.com"
-  className="rounded-xl bg-white px-6 py-3 font-medium text-black transition hover:-translate-y-1"
->
-  Email Me
-</a>
+            <div className="max-w-4xl rounded-3xl border border-white/10 bg-[#0b111b]/90 p-5 shadow-2xl shadow-black/30 md:p-8">
+              <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+                <p className="mb-4 text-sm font-semibold text-cyan-300">
+                  Try asking
+                </p>
+
+                <div className="grid gap-2 text-sm text-white/45 md:grid-cols-2">
+                  {suggestions.length > 0 ? (
+                    suggestions.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        onClick={() => setQuestion(suggestion)}
+                        className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-left transition hover:bg-white/5 hover:text-white/70"
+                      >
+                        {suggestion}
+                      </button>
+                    ))
+                  ) : (
+                    <p className="md:col-span-2 text-white/35">
+                      Suggested questions are loading...
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mb-5 min-h-48 rounded-2xl border border-white/10 bg-black/20 p-5">
+                <p className="whitespace-pre-wrap text-sm leading-7 text-white/65">
+                  {loading
+                    ? "Thinking..."
+                    : answer ||
+                      "Ask a question and the AI agent will answer using verified information."}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 md:flex-row">
+                <input
+                  type="text"
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      askAgent();
+                    }
+                  }}
+                  placeholder="Ask a question..."
+                  className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-4 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/40"
+                />
+
+                <button
+                  type="button"
+                  onClick={askAgent}
+                  disabled={loading}
+                  className="rounded-xl bg-cyan-300 px-7 py-4 font-semibold text-black transition duration-300 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? "Thinking..." : "Ask Agent"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+        )}
+
+        {/* CONTACT */}
+        {contactSection.visible && (
+        <section
+          id="contact"
+          className="reveal border-t border-white/10 px-6 py-24"
+        >
+          <div className="mx-auto max-w-6xl">
+            <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent p-8 md:p-12">
+              <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                {contactLabel}
+              </p>
+
+              <h2 className="mb-5 text-4xl font-bold md:text-5xl">
+                {contactHeading}
+              </h2>
+
+              <p className="mb-9 max-w-3xl text-lg leading-8 text-white/55">
+                {contactDescription}
+              </p>
+
+              <div className="flex flex-wrap gap-4">
+                <a
+                  href={`mailto:${email}`}
+                  className={contactButtonClass}
+                >
+                  Email
+                </a>
+
+                <a
+                  href={linkedIn}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={contactButtonClass}
+                >
+                  LinkedIn
+                </a>
+
+                <a
+                  href={github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={contactButtonClass}
+                >
+                  GitHub
+                </a>
+
+                <a
+                  href={cvUrl || "/Ebraheim_Resume.pdf"}
+                  {...(cvUrl
+                    ? {
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                      }
+                    : {
+                        download: "Ebraheim_Resume.pdf",
+                      })}
+                  className={contactButtonClass}
+                >
+                  Download CV ↓
+                </a>
+              </div>
+            </div>
+
+            <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-white/30">
+              <p>© 2026 {profile?.full_name || "Ebraheim Mohamed Pasha Qadri"}</p>
 
               <a
-                href="https://linkedin.com/in/ebraheim13ae"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-white/70 transition hover:-translate-y-1 hover:border-cyan-300/30 hover:text-white"
+                href="#home"
+                onClick={() => setActiveSection("home")}
+                className="transition hover:text-cyan-300"
               >
-                LinkedIn
-              </a>
-
-              <a
-                href="https://github.com/Ebraheim"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-white/70 transition hover:-translate-y-1 hover:border-cyan-300/30 hover:text-white"
-              >
-                GitHub
+                Back to top ↑
               </a>
             </div>
           </div>
-
-          <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-white/30">
-            <p>© 2026 Ebraheim Mohamed Pasha Qadri</p>
-
-            <a
-              href="#home"
-              className="transition hover:text-cyan-300"
-            >
-              Back to top ↑
-            </a>
-          </div>
-        </div>
-      </section>
-    </main>
+        </section>
+        )}
+      </main>
+    </>
   );
 }
