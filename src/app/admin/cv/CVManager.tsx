@@ -38,6 +38,12 @@ type ExtractedEducation = {
   description?: string;
 };
 
+type ExtractedAchievement = {
+  title?: string;
+  description?: string;
+  date?: string;
+};
+
 type ExtractedProject = {
   title?: string;
   short_description?: string;
@@ -71,6 +77,7 @@ type ExtractedCV = {
   profile?: ExtractedProfile;
   experience?: ExtractedExperience[];
   education?: ExtractedEducation[];
+  achievements?: ExtractedAchievement[];
   projects?: ExtractedProject[];
   skills?: ExtractedSkill[];
   certifications?: ExtractedCertification[];
@@ -81,6 +88,7 @@ type SelectedSections = {
   profile: boolean;
   experience: boolean;
   education: boolean;
+  achievements: boolean;
   projects: boolean;
   skills: boolean;
   certifications: boolean;
@@ -91,6 +99,7 @@ const defaultSelected: SelectedSections = {
   profile: true,
   experience: true,
   education: true,
+  achievements: true,
   projects: true,
   skills: true,
   certifications: true,
@@ -113,6 +122,8 @@ export default function CVManager({
   const [deleting, setDeleting] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importComplete, setImportComplete] = useState(false);
+  const [publicSlug, setPublicSlug] = useState("");
 
   const [extractedData, setExtractedData] =
     useState<ExtractedCV | null>(null);
@@ -126,6 +137,7 @@ export default function CVManager({
   const [drafts, setDrafts] = useState({
     experience: "[]",
     education: "[]",
+    achievements: "[]",
     projects: "[]",
     skills: "[]",
     certifications: "[]",
@@ -166,9 +178,12 @@ export default function CVManager({
     setExtractedData(null);
     setExtractedFileName("");
     setSelected(defaultSelected);
+    setImportComplete(false);
+    setPublicSlug("");
     setDrafts({
       experience: "[]",
       education: "[]",
+      achievements: "[]",
       projects: "[]",
       skills: "[]",
       certifications: "[]",
@@ -385,6 +400,11 @@ export default function CVManager({
           null,
           2
         ),
+        achievements: JSON.stringify(
+          extracted.achievements ?? [],
+          null,
+          2
+        ),
         projects: JSON.stringify(
           extracted.projects ?? [],
           null,
@@ -468,6 +488,15 @@ export default function CVManager({
       return;
     }
 
+    const achievements = parseDraft<ExtractedAchievement>(
+      "Achievements",
+      drafts.achievements
+    );
+    if (!achievements) {
+      setImporting(false);
+      return;
+    }
+
     const projects = parseDraft<ExtractedProject>(
       "Projects",
       drafts.projects
@@ -515,6 +544,7 @@ export default function CVManager({
           profile: extractedData.profile ?? {},
           experience,
           education,
+          achievements,
           projects,
           skills,
           certifications,
@@ -533,12 +563,27 @@ export default function CVManager({
       const imported = data.imported ?? {};
 
       setMessage(
-        `Import complete. Profile: ${imported.profile ?? 0}, Projects: ${
-          imported.projects ?? 0
-        }, Skills: ${imported.skills ?? 0}, Certifications: ${
-          imported.certifications ?? 0
-        }, AI knowledge entries: ${imported.knowledge ?? 0}.`
+        `Import complete. Profile: ${imported.profile ?? 0}, Experience: ${
+          imported.experience ?? 0
+        }, Education: ${imported.education ?? 0}, Achievements: ${
+          imported.achievements ?? 0
+        }, Projects: ${imported.projects ?? 0}, Skills: ${
+          imported.skills ?? 0
+        }, Certifications: ${imported.certifications ?? 0}, AI knowledge entries: ${
+          imported.knowledge ?? 0
+        }.`
       );
+
+      const supabase = createClient();
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("slug")
+        .eq("id", userId)
+        .maybeSingle();
+
+      setPublicSlug(profileData?.slug ?? "");
+      setImportComplete(true);
     } catch (importError) {
       console.error("CV import request error:", importError);
       setError("Could not connect to the CV import service.");
@@ -551,6 +596,7 @@ export default function CVManager({
     key:
       | "experience"
       | "education"
+      | "achievements"
       | "projects"
       | "skills"
       | "certifications"
@@ -748,6 +794,43 @@ export default function CVManager({
         </div>
       )}
 
+      {importComplete && (
+        <section className="rounded-3xl border border-green-300/20 bg-green-300/[0.035] p-6 md:p-8">
+          <p className="text-sm font-medium text-green-300">
+            Website setup complete
+          </p>
+
+          <h2 className="mt-2 text-2xl font-semibold">
+            Your approved CV information has been imported.
+          </h2>
+
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">
+            You can continue editing your website from the dashboard or open
+            your public website to review what visitors will see.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a
+              href="/admin/dashboard"
+              className="rounded-xl bg-green-300 px-5 py-3 font-semibold text-black transition hover:bg-green-200"
+            >
+              Go to Dashboard →
+            </a>
+
+            {publicSlug && (
+              <a
+                href={`/${publicSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 font-medium text-white/70 transition hover:border-cyan-300/25 hover:text-white"
+              >
+                View My Website ↗
+              </a>
+            )}
+          </div>
+        </section>
+      )}
+
       {extractedData && (
         <section className="space-y-5 rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
           <div>
@@ -841,13 +924,19 @@ export default function CVManager({
           {reviewBlock(
             "experience",
             "Experience",
-            "Your current database has no dedicated experience table, so approved experience is imported into verified AI Knowledge."
+            "Approved experience is added to the public Experience section and kept available to the AI assistant."
           )}
 
           {reviewBlock(
             "education",
             "Education",
-            "Your current database has no dedicated education table, so approved education is imported into verified AI Knowledge."
+            "Approved education is added to the public Education section and kept available to the AI assistant."
+          )}
+
+          {reviewBlock(
+            "achievements",
+            "Achievements",
+            "Approved awards, recognitions, and achievements are added to the public Achievements section."
           )}
 
           {reviewBlock("projects", "Projects")}
@@ -867,10 +956,10 @@ export default function CVManager({
             </p>
 
             <p className="mt-2 text-sm leading-6 text-white/45">
-              Confirm Import adds approved projects, skills,
-              certifications and knowledge. Non-empty approved profile
-              fields update the existing profile. Empty profile values
-              will not erase existing information.
+              Confirm Import adds approved experience, education,
+              achievements, projects, skills, certifications, and AI knowledge.
+              Non-empty approved profile fields update the existing profile.
+              Empty profile values will not erase existing information.
             </p>
           </div>
 

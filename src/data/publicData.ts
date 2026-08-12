@@ -106,6 +106,60 @@ export async function getPublicHeroHighlights(userId: string) {
   return data ?? [];
 }
 
+export async function getPublicExperience(userId: string) {
+  const { data, error } = await supabase
+    .from("experience")
+    .select(
+      "id, company, role, start_date, end_date, location, description, display_order, is_visible"
+    )
+    .eq("user_id", userId)
+    .eq("is_visible", true)
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    console.error("Experience fetch error:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function getPublicEducation(userId: string) {
+  const { data, error } = await supabase
+    .from("education")
+    .select(
+      "id, institution, degree, field, start_date, end_date, description, display_order, is_visible"
+    )
+    .eq("user_id", userId)
+    .eq("is_visible", true)
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    console.error("Education fetch error:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function getPublicAchievements(userId: string) {
+  const { data, error } = await supabase
+    .from("achievements")
+    .select(
+      "id, title, description, date, display_order, is_visible"
+    )
+    .eq("user_id", userId)
+    .eq("is_visible", true)
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    console.error("Achievements fetch error:", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
 export async function getPublicSiteContent(userId: string) {
   const { data, error } = await supabase
     .from("site_content")

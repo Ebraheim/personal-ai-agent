@@ -79,6 +79,26 @@ export default function ProjectsManager({
   const sectionClass =
     "rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-8";
 
+  async function regenerateSuggestedQuestions() {
+    try {
+      const response = await fetch("/api/chat/suggestions/regenerate", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        console.error(
+          "Suggested-question regeneration failed:",
+          await response.text()
+        );
+      }
+    } catch (regenerationError) {
+      console.error(
+        "Suggested-question regeneration failed:",
+        regenerationError
+      );
+    }
+  }
+
   function updateSectionField(
     field: keyof SectionContent,
     value: string
@@ -154,6 +174,8 @@ export default function ProjectsManager({
         return;
       }
     }
+
+    await regenerateSuggestedQuestions();
 
     setSectionMessage("Projects section text saved successfully.");
     setSavingSection(false);
@@ -276,6 +298,8 @@ export default function ProjectsManager({
       setProjectMessage("Project added successfully.");
     }
 
+    await regenerateSuggestedQuestions();
+
     setForm(emptyProjectForm);
     setEditingId(null);
     setSavingProject(false);
@@ -309,6 +333,8 @@ export default function ProjectsManager({
         item.id === project.id ? data : item
       )
     );
+
+    await regenerateSuggestedQuestions();
   }
 
   async function deleteProject(project: Project) {
@@ -340,6 +366,8 @@ export default function ProjectsManager({
     if (editingId === project.id) {
       resetProjectForm();
     }
+
+    await regenerateSuggestedQuestions();
   }
 
   return (

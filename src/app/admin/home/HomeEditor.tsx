@@ -75,6 +75,28 @@ export default function HomeEditor({
   const sectionClass =
     "rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-8";
 
+  async function regenerateSuggestedQuestions() {
+    try {
+      const response = await fetch("/api/chat/suggestions/regenerate", {
+        method: "POST",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        console.warn(
+          "Suggested question regeneration failed:",
+          data.error || response.statusText
+        );
+      }
+    } catch (regenerationError) {
+      console.warn(
+        "Could not regenerate suggested questions:",
+        regenerationError
+      );
+    }
+  }
+
   function updateProfile(
     field: keyof HomeProfile,
     value: string
@@ -115,6 +137,7 @@ export default function HomeEditor({
           profile.professional_title.trim(),
         hero_tagline: profile.hero_tagline.trim(),
         bio: profile.bio.trim(),
+        onboarding_completed: true,
         updated_at: new Date().toISOString(),
       });
 
@@ -123,6 +146,8 @@ export default function HomeEditor({
       setSavingProfile(false);
       return;
     }
+
+    await regenerateSuggestedQuestions();
 
     setProfileMessage(
       "Home information saved successfully."
@@ -243,6 +268,8 @@ export default function HomeEditor({
       );
     }
 
+    await regenerateSuggestedQuestions();
+
     setHighlightForm(emptyHighlight);
     setEditingHighlightId(null);
     setSavingHighlight(false);
@@ -280,6 +307,8 @@ export default function HomeEditor({
           : highlight
       )
     );
+
+    await regenerateSuggestedQuestions();
   }
 
   async function deleteHighlight(
@@ -316,6 +345,8 @@ export default function HomeEditor({
     if (editingHighlightId === item.id) {
       cancelHighlightEdit();
     }
+
+    await regenerateSuggestedQuestions();
   }
 
   return (

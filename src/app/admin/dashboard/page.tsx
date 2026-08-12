@@ -14,6 +14,24 @@ export default async function AdminDashboardPage() {
     redirect("/admin");
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("slug, onboarding_completed")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  if (!profile?.onboarding_completed) {
+    redirect("/admin/onboarding");
+  }
+
+  const publicWebsiteHref = profile.slug
+    ? `/${profile.slug}`
+    : "/";
+
   const editorCards = [
     {
       title: "Home",
@@ -32,6 +50,33 @@ export default async function AdminDashboardPage() {
       href: "/admin/projects",
       action: "Edit Projects",
       icon: "◫",
+    },
+    {
+      title: "Experience",
+      subtitle: "Career Section",
+      description:
+        "Manage your work experience, roles, companies, dates, locations, and descriptions.",
+      href: "/admin/experience",
+      action: "Edit Experience",
+      icon: "↗",
+    },
+    {
+      title: "Education",
+      subtitle: "Education Section",
+      description:
+        "Manage your degrees, institutions, fields of study, dates, and education details.",
+      href: "/admin/education",
+      action: "Edit Education",
+      icon: "▣",
+    },
+    {
+      title: "Achievements",
+      subtitle: "Achievements Section",
+      description:
+        "Manage awards, competitions, recognitions, research highlights, and other key achievements.",
+      href: "/admin/achievements",
+      action: "Edit Achievements",
+      icon: "★",
     },
     {
       title: "Skills",
@@ -105,7 +150,7 @@ export default async function AdminDashboardPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              href="/"
+              href={publicWebsiteHref}
               target="_blank"
               className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/70 transition hover:border-cyan-300/30 hover:bg-white/[0.06] hover:text-white"
             >
@@ -153,7 +198,7 @@ export default async function AdminDashboardPage() {
             </div>
 
             <Link
-              href="/"
+              href={publicWebsiteHref}
               target="_blank"
               className="rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-2.5 text-sm font-medium text-cyan-200 transition hover:bg-cyan-300/20 hover:text-white"
             >

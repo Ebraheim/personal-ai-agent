@@ -78,6 +78,26 @@ export default function CertificationsManager({
   const sectionClass =
     "rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-8";
 
+  async function regenerateSuggestedQuestions() {
+    try {
+      const response = await fetch("/api/chat/suggestions/regenerate", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        console.error(
+          "Suggested-question regeneration failed:",
+          await response.text()
+        );
+      }
+    } catch (regenerationError) {
+      console.error(
+        "Suggested-question regeneration failed:",
+        regenerationError
+      );
+    }
+  }
+
   function updateSectionField(
     field: keyof SectionContent,
     value: string
@@ -157,6 +177,8 @@ export default function CertificationsManager({
         return;
       }
     }
+
+    await regenerateSuggestedQuestions();
 
     setSectionMessage(
       "Certifications section text saved successfully."
@@ -283,6 +305,8 @@ export default function CertificationsManager({
       );
     }
 
+    await regenerateSuggestedQuestions();
+
     setForm(emptyForm);
     setEditingId(null);
     setSavingCertification(false);
@@ -318,6 +342,8 @@ export default function CertificationsManager({
         item.id === certification.id ? data : item
       )
     );
+
+    await regenerateSuggestedQuestions();
   }
 
   async function deleteCertification(
@@ -351,6 +377,8 @@ export default function CertificationsManager({
     if (editingId === certification.id) {
       resetForm();
     }
+
+    await regenerateSuggestedQuestions();
   }
 
   return (

@@ -36,16 +36,15 @@ export async function POST() {
       );
     }
 
-    const { data: files, error: listError } =
-      await supabase.storage
-        .from("cvs")
-        .list(user.id, {
-          limit: 100,
-          sortBy: {
-            column: "created_at",
-            order: "desc",
-          },
-        });
+    const { data: files, error: listError } = await supabase.storage
+      .from("cvs")
+      .list(user.id, {
+        limit: 100,
+        sortBy: {
+          column: "created_at",
+          order: "desc",
+        },
+      });
 
     if (listError) {
       return NextResponse.json(
@@ -55,9 +54,7 @@ export async function POST() {
     }
 
     const pdfFiles = (files ?? [])
-      .filter((file) =>
-        file.name.toLowerCase().endsWith(".pdf")
-      )
+      .filter((file) => file.name.toLowerCase().endsWith(".pdf"))
       .sort((a, b) => {
         const aTime = new Date(
           a.updated_at || a.created_at || 0
@@ -99,9 +96,6 @@ export async function POST() {
 
     const arrayBuffer = await cvBlob.arrayBuffer();
 
-    // Keep this first version conservative.
-    // Gemini supports much larger PDFs, but the admin uploader itself
-    // currently limits CVs to 10 MB.
     if (arrayBuffer.byteLength > 10 * 1024 * 1024) {
       return NextResponse.json(
         { error: "The CV is too large to process." },
@@ -116,12 +110,15 @@ export async function POST() {
 Extract structured information from this CV/resume.
 
 IMPORTANT RULES:
+
 - Use ONLY information explicitly present in the CV.
 - Do not guess, embellish, or invent missing facts.
 - If a value is missing, use an empty string or empty array.
 - Keep wording concise but faithful to the CV.
 - Do not treat a skill as work experience.
 - Do not turn unfinished/planned work into completed achievements.
+- Put awards, recognitions, competition placements, publications, and clearly stated accomplishments into "achievements".
+- Do not duplicate a certification as an achievement unless the CV explicitly presents it as an award or recognition.
 - Return valid JSON only.
 - Do not include markdown or code fences.
 
@@ -156,6 +153,13 @@ Return exactly this JSON shape:
       "start_date": "",
       "end_date": "",
       "description": ""
+    }
+  ],
+  "achievements": [
+    {
+      "title": "",
+      "description": "",
+      "date": ""
     }
   ],
   "projects": [
@@ -196,7 +200,7 @@ Return exactly this JSON shape:
 For "knowledge", create a small set of useful factual entries that would help
 a website AI assistant answer questions about the CV owner. Use only facts
 already present in the CV.
-    `.trim();
+`.trim();
 
     const response = await ai.models.generateContent({
       model: "gemini-3.6-flash",

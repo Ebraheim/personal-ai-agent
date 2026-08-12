@@ -13,7 +13,11 @@ export default async function AdminProjectsPage() {
     redirect("/admin");
   }
 
-  const [{ data: projects }, { data: siteContent }] = await Promise.all([
+  const [
+    { data: projects },
+    { data: siteContent },
+    { data: profile },
+  ] = await Promise.all([
     supabase
       .from("projects")
       .select(
@@ -25,12 +29,20 @@ export default async function AdminProjectsPage() {
 
     supabase
       .from("site_content")
-      .select(
-        "projects_label, projects_heading, projects_description"
-      )
+      .select("projects_label, projects_heading, projects_description")
       .eq("user_id", user.id)
       .maybeSingle(),
+
+    supabase
+      .from("profiles")
+      .select("slug")
+      .eq("id", user.id)
+      .maybeSingle(),
   ]);
+
+  const previewHref = profile?.slug
+    ? `/${profile.slug}#projects`
+    : "/#projects";
 
   return (
     <main className="min-h-screen bg-[#070b12] px-6 py-16 text-white">
@@ -48,9 +60,7 @@ export default async function AdminProjectsPage() {
               Projects Section
             </p>
 
-            <h1 className="text-4xl font-bold md:text-5xl">
-              Edit Projects
-            </h1>
+            <h1 className="text-4xl font-bold md:text-5xl">Edit Projects</h1>
 
             <p className="mt-4 max-w-2xl text-white/50">
               Everything here controls the Projects section shown on your public
@@ -59,7 +69,7 @@ export default async function AdminProjectsPage() {
           </div>
 
           <a
-            href="/#projects"
+            href={previewHref}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm text-white/60 transition hover:border-cyan-300/30 hover:text-white"
@@ -83,3 +93,4 @@ export default async function AdminProjectsPage() {
     </main>
   );
 }
+

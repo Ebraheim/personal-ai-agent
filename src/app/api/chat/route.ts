@@ -61,6 +61,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const question = body.question;
+    const slug = body.slug;
 
     if (
       !question ||
@@ -77,17 +78,29 @@ export async function POST(request: Request) {
       );
     }
 
+    if (
+      !slug ||
+      typeof slug !== "string" ||
+      !slug.trim()
+    ) {
+      return Response.json(
+        {
+          error: "A valid portfolio slug is required.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     const supabase = await createClient();
 
     /*
      * STEP 1:
-     * Find the current public owner/profile.
+     * Resolve the correct website owner by portfolio slug.
      *
-     * For the current single-owner version of the product,
-     * the first profile is the website owner.
-     *
-     * Later, when we add multiple customers, we will replace
-     * this with slug/domain-based owner resolution.
+     * This prevents one customer's AI assistant from loading
+     * another customer's profile or verified information.
      */
     const {
       data: profile,
@@ -107,7 +120,7 @@ export async function POST(request: Request) {
         github_url
         `
       )
-      .limit(1)
+      .eq("slug", slug.trim())
       .maybeSingle();
 
     if (profileError) {
@@ -121,7 +134,7 @@ export async function POST(request: Request) {
       return Response.json(
         {
           error:
-            "The AI agent does not have a public profile to use yet.",
+            "No public portfolio was found for this slug.",
         },
         {
           status: 404,
@@ -140,6 +153,9 @@ export async function POST(request: Request) {
       projectsResult,
       skillsResult,
       certificationsResult,
+      experienceResult,
+      educationResult,
+      achievementsResult,
       careerFocusResult,
       knowledgeResult,
       heroHighlightsResult,
@@ -191,6 +207,60 @@ export async function POST(request: Request) {
           issue_date,
           expiry_date,
           credential_url
+          `
+        )
+        .eq("user_id", ownerId)
+        .eq("is_visible", true)
+        .order("display_order", {
+          ascending: true,
+        }),
+
+      supabase
+        .from("experience")
+        .select(
+          `
+          id,
+          company,
+          role,
+          start_date,
+          end_date,
+          location,
+          description
+          `
+        )
+        .eq("user_id", ownerId)
+        .eq("is_visible", true)
+        .order("display_order", {
+          ascending: true,
+        }),
+
+      supabase
+        .from("education")
+        .select(
+          `
+          id,
+          institution,
+          degree,
+          field,
+          start_date,
+          end_date,
+          description
+          `
+        )
+        .eq("user_id", ownerId)
+        .eq("is_visible", true)
+        .order("display_order", {
+          ascending: true,
+        }),
+
+      supabase
+        .from("achievements")
+        .select(
+          `
+          id,
+          title,
+          description,
+          date
           `
         )
         .eq("user_id", ownerId)
@@ -280,6 +350,27 @@ export async function POST(request: Request) {
       );
     }
 
+    if (experienceResult.error) {
+      console.error(
+        "AI experience fetch error:",
+        experienceResult.error
+      );
+    }
+
+    if (educationResult.error) {
+      console.error(
+        "AI education fetch error:",
+        educationResult.error
+      );
+    }
+
+    if (achievementsResult.error) {
+      console.error(
+        "AI achievements fetch error:",
+        achievementsResult.error
+      );
+    }
+
     if (careerFocusResult.error) {
       console.error(
         "AI career focus fetch error:",
@@ -316,6 +407,15 @@ export async function POST(request: Request) {
 
     const certifications =
       certificationsResult.data ?? [];
+
+    const experience =
+      experienceResult.data ?? [];
+
+    const education =
+      educationResult.data ?? [];
+
+    const achievements =
+      achievementsResult.data ?? [];
 
     const careerFocus =
       careerFocusResult.data ?? [];
@@ -417,6 +517,54 @@ Expiry date: ${cleanText(
             .join("\n\n")
         : "No public certifications are currently available.";
 
+    const experienceContext =
+      experience.length > 0
+        ? experience
+            .map(
+              (item, index) => `
+EXPERIENCE ${index + 1}
+Role: ${cleanText(item.role)}
+Company: ${cleanText(item.company)}
+Start date: ${cleanText(item.start_date)}
+End date: ${cleanText(item.end_date)}
+Location: ${cleanText(item.location)}
+Description: ${cleanText(item.description)}
+`.trim()
+            )
+            .join("\n\n")
+        : "No public experience is currently available.";
+
+    const educationContext =
+      education.length > 0
+        ? education
+            .map(
+              (item, index) => `
+EDUCATION ${index + 1}
+Institution: ${cleanText(item.institution)}
+Degree: ${cleanText(item.degree)}
+Field: ${cleanText(item.field)}
+Start date: ${cleanText(item.start_date)}
+End date: ${cleanText(item.end_date)}
+Description: ${cleanText(item.description)}
+`.trim()
+            )
+            .join("\n\n")
+        : "No public education is currently available.";
+
+    const achievementsContext =
+      achievements.length > 0
+        ? achievements
+            .map(
+              (item, index) => `
+ACHIEVEMENT ${index + 1}
+Title: ${cleanText(item.title)}
+Date: ${cleanText(item.date)}
+Description: ${cleanText(item.description)}
+`.trim()
+            )
+            .join("\n\n")
+        : "No public achievements are currently available.";
+
     const careerFocusContext =
       careerFocus.length > 0
         ? careerFocus
@@ -483,6 +631,15 @@ ${skillsContext}
 
 CERTIFICATIONS
 ${certificationsContext}
+
+EXPERIENCE
+${experienceContext}
+
+EDUCATION
+${educationContext}
+
+ACHIEVEMENTS
+${achievementsContext}
 
 CAREER / BUSINESS FOCUS
 ${careerFocusContext}

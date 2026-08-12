@@ -1,104 +1,34 @@
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
 
-const apiKey = process.env.GEMINI_API_KEY;
+export const dynamic = "force-dynamic";
 
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY is missing");
-}
-
-const ai = new GoogleGenAI({ apiKey });
-
-function cleanText(value: string | null | undefined) {
-  return value?.trim() || "";
-}
-
-async function generateWithRetry(
-  contents: string,
-  maxRetries = 3
-) {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents,
-      });
-    } catch (error: unknown) {
-      lastError = error;
-
-      const status =
-        typeof error === "object" &&
-        error !== null &&
-        "status" in error
-          ? (error as { status?: number }).status
-          : undefined;
-
-      if (status !== 503 || attempt === maxRetries) {
-        throw error;
-      }
-
-      await new Promise((resolve) =>
-        setTimeout(resolve, attempt * 1500)
-      );
-    }
-  }
-
-  throw lastError;
-}
-
-function parseSuggestions(text: string) {
-  const lines = text
-    .split("\n")
-    .map((line) =>
-      line
-        .replace(/^\s*[-*•]\s*/, "")
-        .replace(/^\s*\d+[.)]\s*/, "")
-        .trim()
-    )
-    .filter(Boolean);
-
-  const questions = lines
-    .map((line) => {
-      if (line.endsWith("?")) {
-        return line;
-      }
-
-      // If Gemini returns a valid-looking question without "?", keep it.
-      if (
-        /^(what|which|who|where|when|why|how|can|could|do|does|did|is|are|was|were|tell|show|explain)/i.test(
-          line
-        )
-      ) {
-        return `${line}?`;
-      }
-
-      return "";
-    })
-    .filter(Boolean);
-
-  return [...new Set(questions)].slice(0, 4);
-}
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
 
-    const { data: profile, error: profileError } =
-      await supabase
-        .from("profiles")
-        .select(
-          "id, full_name, professional_title, hero_tagline, bio"
-        )
-        .limit(1)
-        .maybeSingle();
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get("slug")?.trim();
+
+    if (!slug) {
+      return Response.json(
+        {
+          suggestions: [],
+          error: "Portfolio slug is required.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .eq("slug", slug)
+      .maybeSingle();
 
     if (profileError) {
-      console.error(
-        "Suggestion profile fetch error:",
-        profileError
-      );
+      console.error("Suggestion profile fetch error:", profileError);
 
       return Response.json(
         {
@@ -123,228 +53,20 @@ export async function GET() {
       );
     }
 
-    const ownerId = profile.id;
+    const { data: savedQuestions, error: questionsError } = await supabase
+      .from("suggested_questions")
+      .select("question, display_order")
+      .eq("user_id", profile.id)
+      .order("display_order", { ascending: true })
+      .limit(4);
 
-    const [
-      projectsResult,
-      skillsResult,
-      certificationsResult,
-      careerFocusResult,
-      knowledgeResult,
-      highlightsResult,
-      siteContentResult,
-    ] = await Promise.all([
-      supabase
-        .from("projects")
-        .select(
-          "title, short_description, full_description, technologies, status"
-        )
-        .eq("user_id", ownerId)
-        .eq("is_visible", true)
-        .order("display_order", { ascending: true }),
-
-      supabase
-        .from("skills")
-        .select("title, description")
-        .eq("user_id", ownerId)
-        .eq("is_visible", true)
-        .order("display_order", { ascending: true }),
-
-      supabase
-        .from("certifications")
-        .select("title, issuer, status")
-        .eq("user_id", ownerId)
-        .eq("is_visible", true)
-        .order("display_order", { ascending: true }),
-
-      supabase
-        .from("career_focus")
-        .select("title")
-        .eq("user_id", ownerId)
-        .eq("is_visible", true)
-        .order("display_order", { ascending: true }),
-
-      supabase
-        .from("agent_knowledge")
-        .select("title, content, category")
-        .eq("user_id", ownerId)
-        .eq("is_active", true)
-        .order("priority", { ascending: false }),
-
-      supabase
-        .from("hero_highlights")
-        .select("label")
-        .eq("user_id", ownerId)
-        .eq("is_visible", true)
-        .order("display_order", { ascending: true }),
-
-      supabase
-        .from("site_content")
-        .select(
-          `
-          about_heading,
-          about_primary_text,
-          about_secondary_text,
-          projects_description,
-          skills_description,
-          certifications_description,
-          contact_heading,
-          contact_description
-          `
-        )
-        .eq("user_id", ownerId)
-        .maybeSingle(),
-    ]);
-
-    const queryErrors = [
-      projectsResult.error,
-      skillsResult.error,
-      certificationsResult.error,
-      careerFocusResult.error,
-      knowledgeResult.error,
-      highlightsResult.error,
-      siteContentResult.error,
-    ].filter(Boolean);
-
-    if (queryErrors.length > 0) {
-      console.error(
-        "Suggestion data fetch errors:",
-        queryErrors
-      );
-    }
-
-    const context = `
-PROFILE
-Name: ${cleanText(profile.full_name)}
-Title: ${cleanText(profile.professional_title)}
-Tagline: ${cleanText(profile.hero_tagline)}
-Bio: ${cleanText(profile.bio)}
-
-PROJECTS
-${(projectsResult.data ?? [])
-  .map(
-    (item) =>
-      `${cleanText(item.title)} | ${cleanText(
-        item.short_description
-      )} | ${cleanText(item.full_description)} | ${cleanText(
-        item.technologies
-      )} | ${cleanText(item.status)}`
-  )
-  .join("\n")}
-
-SKILLS
-${(skillsResult.data ?? [])
-  .map(
-    (item) =>
-      `${cleanText(item.title)}: ${cleanText(
-        item.description
-      )}`
-  )
-  .join("\n")}
-
-CERTIFICATIONS
-${(certificationsResult.data ?? [])
-  .map(
-    (item) =>
-      `${cleanText(item.title)} | ${cleanText(
-        item.issuer
-      )} | ${cleanText(item.status)}`
-  )
-  .join("\n")}
-
-FOCUS
-${(careerFocusResult.data ?? [])
-  .map((item) => cleanText(item.title))
-  .join("\n")}
-
-HIGHLIGHTS
-${(highlightsResult.data ?? [])
-  .map((item) => cleanText(item.label))
-  .join("\n")}
-
-ADDITIONAL VERIFIED KNOWLEDGE
-${(knowledgeResult.data ?? [])
-  .map(
-    (item) =>
-      `${cleanText(item.title)} | ${cleanText(
-        item.category
-      )}: ${cleanText(item.content)}`
-  )
-  .join("\n")}
-
-WEBSITE TEXT
-${
-  siteContentResult.data
-    ? [
-        cleanText(siteContentResult.data.about_heading),
-        cleanText(siteContentResult.data.about_primary_text),
-        cleanText(siteContentResult.data.about_secondary_text),
-        cleanText(siteContentResult.data.projects_description),
-        cleanText(siteContentResult.data.skills_description),
-        cleanText(
-          siteContentResult.data.certifications_description
-        ),
-        cleanText(siteContentResult.data.contact_heading),
-        cleanText(siteContentResult.data.contact_description),
-      ]
-        .filter(Boolean)
-        .join("\n")
-    : ""
-}
-    `.trim();
-
-    if (!context.replace(/\s/g, "")) {
-      return Response.json(
-        {
-          suggestions: [],
-          error:
-            "There is not enough website information to generate suggestions yet.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const prompt = `
-Using only the verified website information below, generate exactly 4 useful questions a visitor would naturally want to ask the website's AI assistant.
-
-The website may belong to a person, business, gym, restaurant, consultant, service provider, or another type of owner. Infer the appropriate visitor intent only from the supplied information.
-
-Rules:
-- Generate exactly 4 questions.
-- Each question must be directly answerable from the verified information.
-- Keep each question short and natural.
-- Make the four questions meaningfully different.
-- Do not invent services, facts, products, prices, achievements, or experience.
-- Do not assume the website owner is a job seeker or engineer unless the information supports that.
-- Use the owner's actual name only when it sounds natural.
-- Output only the four questions.
-- One question per line.
-- No numbering, bullets, headings, explanations, Markdown, or extra text.
-
-VERIFIED WEBSITE INFORMATION:
-
-${context}
-    `.trim();
-
-    const response = await generateWithRetry(prompt);
-
-    const rawText = response.text ?? "";
-    const suggestions = parseSuggestions(rawText);
-
-    if (suggestions.length === 0) {
-      console.error(
-        "Gemini returned text but no suggestions could be parsed:",
-        rawText
-      );
+    if (questionsError) {
+      console.error("Suggested questions fetch error:", questionsError);
 
       return Response.json(
         {
           suggestions: [],
-          error:
-            "Gemini responded, but no valid suggested questions could be parsed.",
-          rawText,
+          error: questionsError.message,
         },
         {
           status: 500,
@@ -352,19 +74,37 @@ ${context}
       );
     }
 
+    const suggestions = (savedQuestions ?? [])
+      .map((item) => item.question?.trim())
+      .filter((question): question is string => Boolean(question))
+      .slice(0, 4);
+
+    if (suggestions.length > 0) {
+      return Response.json({
+        suggestions,
+        source: "saved",
+      });
+    }
+
+    const ownerName =
+      profile.full_name?.trim().split(" ")[0] || "the website owner";
+
     return Response.json({
-      suggestions,
+      suggestions: [
+        `What does ${ownerName} specialize in?`,
+        `What projects has ${ownerName} worked on?`,
+        `What are ${ownerName}'s main skills?`,
+        `How can I contact ${ownerName}?`,
+      ],
+      source: "fallback",
     });
   } catch (error: unknown) {
-    console.error(
-      "AI SUGGESTIONS API ERROR:",
-      error
-    );
+    console.error("SUGGESTIONS API ERROR:", error);
 
     const message =
       error instanceof Error
         ? error.message
-        : "Unknown AI suggestions error";
+        : "Unknown suggestions error";
 
     return Response.json(
       {

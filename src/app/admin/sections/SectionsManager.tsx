@@ -30,6 +30,12 @@ const emptyForm: SectionForm = {
   is_visible: true,
 };
 
+const careerSections = [
+  { section_key: "experience", label: "Experience" },
+  { section_key: "education", label: "Education" },
+  { section_key: "achievements", label: "Achievements" },
+] as const;
+
 export default function SectionsManager({
   userId,
   initialSections,
@@ -213,6 +219,69 @@ export default function SectionsManager({
     }
   }
 
+  async function addMissingCareerSections() {
+    setSaving(true);
+    setMessage("");
+    setError("");
+
+    const existingKeys = new Set(
+      sections.map((section) => section.section_key.toLowerCase())
+    );
+
+    const missing = careerSections.filter(
+      (section) => !existingKeys.has(section.section_key)
+    );
+
+    if (missing.length === 0) {
+      setMessage(
+        "Experience, Education, and Achievements are already in Website Settings."
+      );
+      setSaving(false);
+      return;
+    }
+
+    const nextOrder =
+      Math.max(
+        -1,
+        ...sections.map((section) => section.display_order ?? -1)
+      ) + 1;
+
+    const rows = missing.map((section, index) => ({
+      user_id: userId,
+      section_key: section.section_key,
+      label: section.label,
+      display_order: nextOrder + index,
+      is_visible: true,
+    }));
+
+    const supabase = createClient();
+
+    const { data, error } = await supabase
+      .from("sections")
+      .insert(rows)
+      .select("id, section_key, label, display_order, is_visible");
+
+    if (error) {
+      setError(error.message);
+      setSaving(false);
+      return;
+    }
+
+    setSections((current) =>
+      [...current, ...(data ?? [])].sort(
+        (a, b) => a.display_order - b.display_order
+      )
+    );
+
+    setMessage(
+      `Added ${data?.length ?? 0} missing career section${
+        (data?.length ?? 0) === 1 ? "" : "s"
+      }. You can now rename, reorder, hide, or show them below.`
+    );
+
+    setSaving(false);
+  }
+
   const inputClass =
     "mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/40";
 
@@ -220,6 +289,34 @@ export default function SectionsManager({
 
   return (
     <div className="space-y-10">
+      <section className="rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.025] p-6 md:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div>
+            <p className="text-sm text-cyan-300">
+              Career Sections
+            </p>
+
+            <h2 className="mt-1 text-2xl font-semibold">
+              Experience, Education & Achievements
+            </h2>
+
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45">
+              Add any missing career sections to Website Settings so you can
+              rename them, change their order, or hide/show them from here.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={addMissingCareerSections}
+            disabled={saving}
+            className="rounded-xl border border-cyan-300/25 bg-cyan-300/10 px-5 py-3 text-sm font-medium text-cyan-200 transition hover:bg-cyan-300/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Add Missing Career Sections
+          </button>
+        </div>
+      </section>
+
       <form
         onSubmit={handleSave}
         className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 md:p-8"
@@ -261,7 +358,7 @@ export default function SectionsManager({
             />
 
             <p className="mt-2 text-xs text-white/30">
-              Internal name such as projects, skills, about, contact.
+              Internal name such as projects, experience, education, achievements, skills, about, contact.
             </p>
           </div>
 

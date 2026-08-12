@@ -22,18 +22,17 @@ export default async function AdminContactPage() {
 
     supabase
       .from("profiles")
-      .select("location, email, linkedin_url, github_url")
+      .select("location, email, linkedin_url, github_url, slug")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
 
+  const previewHref = profile?.slug ? `/${profile.slug}#contact` : "/#contact";
+
   return (
     <main className="min-h-screen bg-[#070b12] px-6 py-16 text-white">
       <div className="mx-auto max-w-6xl">
-        <a
-          href="/admin/dashboard"
-          className="text-sm text-cyan-300 transition hover:text-cyan-200"
-        >
+        <a href="/admin/dashboard" className="text-sm text-cyan-300 transition hover:text-cyan-200">
           ← Back to Dashboard
         </a>
 
@@ -42,22 +41,14 @@ export default async function AdminContactPage() {
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
               Contact Section
             </p>
-
-            <h1 className="text-4xl font-bold md:text-5xl">
-              Edit Contact
-            </h1>
-
+            <h1 className="text-4xl font-bold md:text-5xl">Edit Contact</h1>
             <p className="mt-4 max-w-2xl text-white/50">
               Control the contact text and contact links shown on your public website.
             </p>
           </div>
 
-          <a
-            href="/#contact"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm text-white/60 transition hover:border-cyan-300/30 hover:text-white"
-          >
+          <a href={previewHref} target="_blank" rel="noopener noreferrer"
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm text-white/60 transition hover:border-cyan-300/30 hover:text-white">
             Preview Contact ↗
           </a>
         </div>
@@ -80,3 +71,4 @@ export default async function AdminContactPage() {
     </main>
   );
 }
+

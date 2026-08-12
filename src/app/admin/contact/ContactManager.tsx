@@ -38,6 +38,26 @@ export default function ContactManager({
   const sectionClass =
     "rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-8";
 
+  async function regenerateSuggestedQuestions() {
+    try {
+      const response = await fetch("/api/chat/suggestions/regenerate", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        console.error(
+          "Suggested-question regeneration failed:",
+          await response.text()
+        );
+      }
+    } catch (regenerationError) {
+      console.error(
+        "Suggested-question regeneration failed:",
+        regenerationError
+      );
+    }
+  }
+
   function updateField(
     field: keyof ContactContent,
     value: string
@@ -121,6 +141,8 @@ export default function ContactManager({
       setSaving(false);
       return;
     }
+
+    await regenerateSuggestedQuestions();
 
     setMessage("Contact section saved successfully.");
     setSaving(false);
