@@ -11,6 +11,8 @@ type Project = {
   technologies: string | null;
   project_url: string | null;
   github_url: string | null;
+  cover_image_url: string | null;
+  highlight: string | null;
   status: string;
   display_order: number;
   is_visible: boolean;
@@ -23,6 +25,8 @@ type ProjectForm = {
   technologies: string;
   project_url: string;
   github_url: string;
+  cover_image_url: string;
+  highlight: string;
   status: string;
   display_order: number;
   is_visible: boolean;
@@ -47,6 +51,8 @@ const emptyProjectForm: ProjectForm = {
   technologies: "",
   project_url: "",
   github_url: "",
+  cover_image_url: "",
+  highlight: "",
   status: "completed",
   display_order: 0,
   is_visible: true,
@@ -71,6 +77,9 @@ export default function ProjectsManager({
   const [projectMessage, setProjectMessage] = useState("");
   const [error, setError] = useState("");
 
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [removeExistingCoverImage, setRemoveExistingCoverImage] = useState(false);
+
   const inputClass =
     "mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/40";
 
@@ -78,6 +87,66 @@ export default function ProjectsManager({
 
   const sectionClass =
     "rounded-3xl border border-white/10 bg-white/[0.025] p-6 md:p-8";
+
+  function getProjectImageStoragePath(publicUrl: string | null | undefined) {
+    if (!publicUrl) return null;
+
+    const marker = "/storage/v1/object/public/project-images/";
+    const markerIndex = publicUrl.indexOf(marker);
+
+    if (markerIndex === -1) return null;
+
+    return decodeURIComponent(publicUrl.slice(markerIndex + marker.length));
+  }
+
+  async function uploadProjectCoverImage(
+    supabase: ReturnType<typeof createClient>,
+    file: File
+  ) {
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const safeExtension = ["jpg", "jpeg", "png", "webp"].includes(extension)
+      ? extension
+      : "jpg";
+    const path = `${userId}/${crypto.randomUUID()}.${safeExtension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("project-images")
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage
+      .from("project-images")
+      .getPublicUrl(path);
+
+    return {
+      publicUrl: data.publicUrl,
+      path,
+    };
+  }
+
+  async function deleteProjectCoverImage(
+    supabase: ReturnType<typeof createClient>,
+    publicUrl: string | null | undefined
+  ) {
+    const path = getProjectImageStoragePath(publicUrl);
+
+    if (!path) return;
+
+    const { error: removeError } = await supabase.storage
+      .from("project-images")
+      .remove([path]);
+
+    if (removeError) {
+      console.error("Project cover image cleanup failed:", removeError);
+    }
+  }
 
   async function regenerateSuggestedQuestions() {
     try {
@@ -184,6 +253,8 @@ export default function ProjectsManager({
   function resetProjectForm() {
     setForm(emptyProjectForm);
     setEditingId(null);
+    setCoverImageFile(null);
+    setRemoveExistingCoverImage(false);
     setProjectMessage("");
     setError("");
   }
@@ -198,11 +269,15 @@ export default function ProjectsManager({
       technologies: project.technologies ?? "",
       project_url: project.project_url ?? "",
       github_url: project.github_url ?? "",
+      cover_image_url: project.cover_image_url ?? "",
+      highlight: project.highlight ?? "",
       status: project.status ?? "completed",
       display_order: project.display_order ?? 0,
       is_visible: project.is_visible ?? true,
     });
 
+    setCoverImageFile(null);
+    setRemoveExistingCoverImage(false);
     setProjectMessage("");
     setError("");
 
@@ -228,6 +303,39 @@ export default function ProjectsManager({
 
     const supabase = createClient();
 
+    const previousProject = editingId
+      ? projects.find((project) => project.id === editingId) ?? null
+      : null;
+
+    let uploadedCover:
+      | {
+          publicUrl: string;
+          path: string;
+        }
+      | null = null;
+
+    let nextCoverImageUrl = form.cover_image_url.trim() || null;
+
+    try {
+      if (coverImageFile) {
+        uploadedCover = await uploadProjectCoverImage(
+          supabase,
+          coverImageFile
+        );
+        nextCoverImageUrl = uploadedCover.publicUrl;
+      } else if (removeExistingCoverImage) {
+        nextCoverImageUrl = null;
+      }
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Could not upload the project cover image."
+      );
+      setSavingProject(false);
+      return;
+    }
+
     const projectData = {
       title: form.title.trim(),
       short_description: form.short_description.trim(),
@@ -235,6 +343,8 @@ export default function ProjectsManager({
       technologies: form.technologies.trim(),
       project_url: form.project_url.trim(),
       github_url: form.github_url.trim(),
+      cover_image_url: nextCoverImageUrl,
+      highlight: form.highlight.trim(),
       status: form.status,
       display_order: form.display_order,
       is_visible: form.is_visible,
@@ -248,14 +358,30 @@ export default function ProjectsManager({
         .eq("id", editingId)
         .eq("user_id", userId)
         .select(
-          "id, title, short_description, full_description, technologies, project_url, github_url, status, display_order, is_visible"
+          "id, title, short_description, full_description, technologies, project_url, github_url, cover_image_url, highlight, status, display_order, is_visible"
         )
         .single();
 
       if (error) {
+        if (uploadedCover) {
+          await supabase.storage
+            .from("project-images")
+            .remove([uploadedCover.path]);
+        }
+
         setError(error.message);
         setSavingProject(false);
         return;
+      }
+
+      if (
+        previousProject?.cover_image_url &&
+        previousProject.cover_image_url !== data.cover_image_url
+      ) {
+        await deleteProjectCoverImage(
+          supabase,
+          previousProject.cover_image_url
+        );
       }
 
       setProjects((current) =>
@@ -278,11 +404,17 @@ export default function ProjectsManager({
           ...projectData,
         })
         .select(
-          "id, title, short_description, full_description, technologies, project_url, github_url, status, display_order, is_visible"
+          "id, title, short_description, full_description, technologies, project_url, github_url, cover_image_url, highlight, status, display_order, is_visible"
         )
         .single();
 
       if (error) {
+        if (uploadedCover) {
+          await supabase.storage
+            .from("project-images")
+            .remove([uploadedCover.path]);
+        }
+
         setError(error.message);
         setSavingProject(false);
         return;
@@ -302,6 +434,8 @@ export default function ProjectsManager({
 
     setForm(emptyProjectForm);
     setEditingId(null);
+    setCoverImageFile(null);
+    setRemoveExistingCoverImage(false);
     setSavingProject(false);
   }
 
@@ -319,7 +453,7 @@ export default function ProjectsManager({
       .eq("id", project.id)
       .eq("user_id", userId)
       .select(
-        "id, title, short_description, full_description, technologies, project_url, github_url, status, display_order, is_visible"
+        "id, title, short_description, full_description, technologies, project_url, github_url, cover_image_url, highlight, status, display_order, is_visible"
       )
       .single();
 
@@ -327,6 +461,11 @@ export default function ProjectsManager({
       setError(error.message);
       return;
     }
+
+    await deleteProjectCoverImage(
+      supabase,
+      project.cover_image_url
+    );
 
     setProjects((current) =>
       current.map((item) =>
@@ -541,6 +680,94 @@ export default function ProjectsManager({
 
           <div className="md:col-span-2">
             <label className={labelClass}>
+              Project Highlight
+            </label>
+
+            <input
+              type="text"
+              value={form.highlight}
+              onChange={(event) =>
+                updateProjectField(
+                  "highlight",
+                  event.target.value
+                )
+              }
+              className={inputClass}
+              placeholder="Example: 3 robots · 10+ mapping runs"
+            />
+
+            <p className="mt-2 text-xs text-white/30">
+              Optional. Add one short proof point, result, metric, or outcome.
+            </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>
+              Project Cover Image
+            </label>
+
+            <div className="mt-2 rounded-2xl border border-dashed border-white/10 bg-black/10 p-4">
+              {(coverImageFile ||
+                (form.cover_image_url && !removeExistingCoverImage)) && (
+                <div className="mb-4 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                  <img
+                    src={
+                      coverImageFile
+                        ? URL.createObjectURL(coverImageFile)
+                        : form.cover_image_url
+                    }
+                    alt="Project cover preview"
+                    className="h-56 w-full object-cover"
+                  />
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="cursor-pointer rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2.5 text-sm font-medium text-cyan-200 transition hover:bg-cyan-300/20 hover:text-white">
+                  Choose Image
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+
+                      if (file && file.size > 5 * 1024 * 1024) {
+                        setError("Project cover image must be 5 MB or smaller.");
+                        event.target.value = "";
+                        return;
+                      }
+
+                      setError("");
+                      setCoverImageFile(file);
+                      setRemoveExistingCoverImage(false);
+                    }}
+                  />
+                </label>
+
+                {(coverImageFile ||
+                  (form.cover_image_url && !removeExistingCoverImage)) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCoverImageFile(null);
+                      setRemoveExistingCoverImage(true);
+                    }}
+                    className="rounded-xl border border-red-400/20 px-4 py-2.5 text-sm text-red-300 transition hover:bg-red-400/10"
+                  >
+                    Remove Image
+                  </button>
+                )}
+
+                <span className="text-xs text-white/30">
+                  JPG, PNG or WebP · Max 5 MB
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className={labelClass}>
               Full Description
             </label>
 
@@ -726,6 +953,16 @@ export default function ProjectsManager({
                 key={project.id}
                 className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"
               >
+                {project.cover_image_url && (
+                  <div className="mb-5 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                    <img
+                      src={project.cover_image_url}
+                      alt={`${project.title} cover`}
+                      className="h-44 w-full object-cover"
+                    />
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
@@ -754,6 +991,12 @@ export default function ProjectsManager({
                   <p className="mt-4 text-sm leading-6 text-white/50">
                     {project.short_description}
                   </p>
+                )}
+
+                {project.highlight && (
+                  <div className="mt-4 inline-flex rounded-lg border border-cyan-300/20 bg-cyan-300/[0.07] px-3 py-2 text-sm font-medium text-cyan-200">
+                    {project.highlight}
+                  </div>
                 )}
 
                 {project.technologies && (

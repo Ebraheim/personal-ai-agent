@@ -21,7 +21,7 @@ export default async function AdminProjectsPage() {
     supabase
       .from("projects")
       .select(
-        "id, title, short_description, full_description, technologies, project_url, github_url, status, display_order, is_visible"
+        "id, title, short_description, full_description, technologies, project_url, github_url, cover_image_url, highlight, status, display_order, is_visible"
       )
       .eq("user_id", user.id)
       .order("display_order", { ascending: true })
@@ -93,4 +93,3 @@ export default async function AdminProjectsPage() {
     </main>
   );
 }
-

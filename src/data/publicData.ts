@@ -26,7 +26,7 @@ export async function getPublicProjects(userId: string) {
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id, title, short_description, full_description, technologies, project_url, github_url, status, display_order, is_visible"
+      "id, title, short_description, full_description, technologies, project_url, github_url, cover_image_url, highlight, status, display_order, is_visible"
     )
     .eq("user_id", userId)
     .eq("is_visible", true)

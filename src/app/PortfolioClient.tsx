@@ -36,6 +36,8 @@ type PublicProject = {
   technologies: string | null;
   project_url: string | null;
   github_url: string | null;
+  cover_image_url: string | null;
+  highlight: string | null;
   status: string;
   display_order: number;
   is_visible: boolean;
@@ -1122,20 +1124,40 @@ export default function PortfolioClient({
                   projects.map((project, index) => (
                     <article
                       key={project.id}
-                      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0a1019]/75 p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-[#0c1420]"
+                      className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0a1018] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-2xl hover:shadow-black/30"
                     >
-                      <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-300/[0.035] blur-3xl transition group-hover:bg-cyan-300/[0.06]" />
+                      {project.cover_image_url && (
+                        <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-black/20">
+                          <img
+                            src={project.cover_image_url}
+                            alt={`${project.title} project cover`}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                          />
 
-                      <div className="relative">
-                        <div className="mb-5 flex items-center justify-between gap-4">
-                          <span className="text-xs font-medium tracking-[0.2em] text-white/25">
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+
+                          <span className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/65 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur">
                             {String(index + 1).padStart(2, "0")}
                           </span>
 
-                          <span className="rounded-full border border-cyan-300/15 bg-cyan-300/[0.05] px-3 py-1 text-xs capitalize text-cyan-300/80">
+                          <span className="absolute right-4 top-4 rounded-full border border-cyan-300/20 bg-[#071019]/85 px-3 py-1.5 text-xs capitalize text-cyan-200 backdrop-blur">
                             {project.status.replaceAll("-", " ")}
                           </span>
                         </div>
+                      )}
+
+                      <div className="p-7 md:p-8">
+                        {!project.cover_image_url && (
+                          <div className="mb-5 flex items-center justify-between gap-4">
+                            <span className="text-xs font-medium tracking-[0.2em] text-white/25">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+
+                            <span className="rounded-full border border-cyan-300/15 bg-cyan-300/[0.05] px-3 py-1 text-xs capitalize text-cyan-300/80">
+                              {project.status.replaceAll("-", " ")}
+                            </span>
+                          </div>
+                        )}
 
                         <h3 className="text-2xl font-semibold tracking-tight text-white">
                           {project.title}
@@ -1147,13 +1169,20 @@ export default function PortfolioClient({
                             "Project details available in the portfolio manager."}
                         </p>
 
+                        {project.highlight && (
+                          <div className="mt-5 inline-flex max-w-full items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] px-3.5 py-2 text-sm font-medium text-cyan-100">
+                            <span className="text-cyan-300">✦</span>
+                            <span>{project.highlight}</span>
+                          </div>
+                        )}
+
                         {project.technologies && (
                           <div className="mt-6 flex flex-wrap gap-2">
                             {project.technologies
                               .split(",")
                               .map((item) => item.trim())
                               .filter(Boolean)
-                              .slice(0, 6)
+                              .slice(0, 8)
                               .map((item) => (
                                 <span
                                   key={item}
@@ -1166,13 +1195,13 @@ export default function PortfolioClient({
                         )}
 
                         {(project.project_url || project.github_url) && (
-                          <div className="mt-7 flex flex-wrap items-center gap-5 border-t border-white/10 pt-5">
+                          <div className="mt-7 flex flex-wrap items-center gap-3 border-t border-white/10 pt-5">
                             {project.project_url && (
                               <a
                                 href={project.project_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm font-medium text-cyan-300 transition hover:text-cyan-200"
+                                className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-cyan-200"
                               >
                                 View Project ↗
                               </a>
@@ -1183,7 +1212,7 @@ export default function PortfolioClient({
                                 href={project.github_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm text-white/40 transition hover:text-white"
+                                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm font-medium text-white/65 transition hover:border-cyan-300/25 hover:text-white"
                               >
                                 GitHub ↗
                               </a>
