@@ -1100,7 +1100,7 @@ export default function PortfolioClient({
           <section
             id="projects"
             style={{ order: projectsSection.order }}
-            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-24"
+            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-20"
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
@@ -1126,38 +1126,65 @@ export default function PortfolioClient({
                       key={project.id}
                       className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0a1018] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-2xl hover:shadow-black/30"
                     >
-                      {project.cover_image_url && (
-                        <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-black/20">
-                          <img
-                            src={project.cover_image_url}
-                            alt={`${project.title} project cover`}
-                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-                          />
-
-                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
-
-                          <span className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/65 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur">
-                            {String(index + 1).padStart(2, "0")}
-                          </span>
-
-                          <span className="absolute right-4 top-4 rounded-full border border-cyan-300/20 bg-[#071019]/85 px-3 py-1.5 text-xs capitalize text-cyan-200 backdrop-blur">
-                            {project.status.replaceAll("-", " ")}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="p-7 md:p-8">
-                        {!project.cover_image_url && (
-                          <div className="mb-5 flex items-center justify-between gap-4">
-                            <span className="text-xs font-medium tracking-[0.2em] text-white/25">
+                      <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-black/20">
+                        {project.cover_image_url ? (
+                          <>
+                            <img
+                              src={project.cover_image_url}
+                              alt={`${project.title} project cover`}
+                              className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                            />
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                          </>
+                        ) : (
+                          <div className="relative flex h-full w-full items-end overflow-hidden bg-[radial-gradient(circle_at_18%_20%,rgba(34,211,238,0.16),transparent_26%),radial-gradient(circle_at_82%_70%,rgba(99,102,241,0.15),transparent_32%),linear-gradient(135deg,#07111a_0%,#0a1018_48%,#0e1020_100%)] p-6 md:p-7">
+                            <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full border border-cyan-300/10" />
+                            <div className="pointer-events-none absolute right-7 top-7 h-20 w-20 rounded-full border border-white/[0.06]" />
+                            <div className="pointer-events-none absolute bottom-5 left-5 h-px w-24 bg-cyan-300/30" />
+                            <div className="pointer-events-none absolute left-6 top-16 text-[6.5rem] font-black leading-none tracking-[-0.08em] text-white/[0.035] md:text-[8rem]">
                               {String(index + 1).padStart(2, "0")}
-                            </span>
+                            </div>
 
-                            <span className="rounded-full border border-cyan-300/15 bg-cyan-300/[0.05] px-3 py-1 text-xs capitalize text-cyan-300/80">
-                              {project.status.replaceAll("-", " ")}
-                            </span>
+                            <div className="relative max-w-[88%]">
+                              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-300/70">
+                                Project Preview
+                              </p>
+
+                              <div className="h-10 w-10 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] p-2.5">
+                                <div className="h-full w-full rounded-full border border-cyan-300/50" />
+                              </div>
+
+                              {project.technologies && (
+                                <div className="mt-5 flex flex-wrap gap-2">
+                                  {project.technologies
+                                    .split(",")
+                                    .map((item) => item.trim())
+                                    .filter(Boolean)
+                                    .slice(0, 3)
+                                    .map((item) => (
+                                      <span
+                                        key={item}
+                                        className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[11px] text-white/55 backdrop-blur"
+                                      >
+                                        {item}
+                                      </span>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
+
+                        <span className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/65 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+
+                        <span className="absolute right-4 top-4 rounded-full border border-cyan-300/20 bg-[#071019]/85 px-3 py-1.5 text-xs capitalize text-cyan-200 backdrop-blur">
+                          {project.status.replaceAll("-", " ")}
+                        </span>
+                      </div>
+
+                      <div className="p-7 md:p-8">
 
                         <h3 className="text-2xl font-semibold tracking-tight text-white">
                           {project.title}
@@ -1237,7 +1264,7 @@ export default function PortfolioClient({
           <section
             id="experience"
             style={{ order: experienceSection.order }}
-            className="reveal border-t border-white/10 px-6 py-24"
+            className="reveal border-t border-white/10 px-6 py-20"
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
@@ -1269,38 +1296,44 @@ export default function PortfolioClient({
                           <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-300" />
                         </div>
 
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-7 transition duration-300 hover:border-cyan-300/25 hover:bg-white/[0.04]">
-                          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-cyan-300">
+                        <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a1019]/75 transition duration-300 hover:border-cyan-300/25 hover:bg-[#0b131e]">
+                          <div className="grid gap-0 lg:grid-cols-[0.32fr_0.68fr]">
+                            <div className="border-b border-white/10 p-6 lg:border-b-0 lg:border-r lg:p-7">
+                              <p className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300/70">
                                 {item.company}
                               </p>
 
-                              <h3 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                              <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">
                                 {item.role}
                               </h3>
 
+                              {(item.start_date || item.end_date) && (
+                                <p className="mt-4 text-sm text-white/45">
+                                  {[item.start_date, item.end_date]
+                                    .filter(Boolean)
+                                    .join(" — ")}
+                                </p>
+                              )}
+
                               {item.location && (
-                                <p className="mt-2 text-sm text-white/35">
+                                <p className="mt-2 text-sm text-white/30">
                                   {item.location}
                                 </p>
                               )}
                             </div>
 
-                            {(item.start_date || item.end_date) && (
-                              <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.025] px-4 py-2 text-xs text-white/40">
-                                {[item.start_date, item.end_date]
-                                  .filter(Boolean)
-                                  .join(" — ")}
-                              </div>
-                            )}
+                            <div className="p-6 lg:p-7">
+                              {item.description ? (
+                                <p className="max-w-4xl whitespace-pre-line leading-7 text-white/52">
+                                  {item.description}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-white/30">
+                                  Experience details available on request.
+                                </p>
+                              )}
+                            </div>
                           </div>
-
-                          {item.description && (
-                            <p className="mt-6 max-w-4xl whitespace-pre-line leading-7 text-white/50">
-                              {item.description}
-                            </p>
-                          )}
                         </div>
                       </article>
                     ))}
@@ -1320,7 +1353,7 @@ export default function PortfolioClient({
           <section
             id="education"
             style={{ order: educationSection.order }}
-            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-24"
+            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-20"
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
@@ -1343,12 +1376,12 @@ export default function PortfolioClient({
                   {education.map((item) => (
                     <article
                       key={item.id}
-                      className="rounded-2xl border border-white/10 bg-[#0a1019]/70 p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25"
+                      className="group rounded-2xl border border-white/10 bg-[#0a1019]/65 p-7 transition duration-300 hover:border-cyan-300/25"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06] text-cyan-300">
-                          ◫
-                        </div>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300/65">
+                          Education
+                        </span>
 
                         {(item.start_date || item.end_date) && (
                           <span className="text-xs text-white/30">
@@ -1359,20 +1392,20 @@ export default function PortfolioClient({
                         )}
                       </div>
 
-                      <h3 className="mt-6 text-xl font-semibold leading-8 text-white">
+                      <h3 className="mt-5 text-xl font-semibold leading-8 text-white">
                         {[item.degree, item.field]
                           .filter(Boolean)
                           .join(" — ") || "Education"}
                       </h3>
 
                       {item.institution && (
-                        <p className="mt-3 font-medium text-cyan-300">
+                        <p className="mt-2 text-base font-medium text-cyan-300">
                           {item.institution}
                         </p>
                       )}
 
                       {item.description && (
-                        <p className="mt-5 whitespace-pre-line leading-7 text-white/50">
+                        <p className="mt-4 whitespace-pre-line text-sm leading-7 text-white/45">
                           {item.description}
                         </p>
                       )}
@@ -1393,7 +1426,7 @@ export default function PortfolioClient({
           <section
             id="achievements"
             style={{ order: achievementsSection.order }}
-            className="reveal border-t border-white/10 px-6 py-24"
+            className="reveal border-t border-white/10 px-6 py-20"
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
@@ -1415,26 +1448,28 @@ export default function PortfolioClient({
                   {achievements.map((item, index) => (
                     <article
                       key={item.id}
-                      className="rounded-2xl border border-white/10 bg-white/[0.025] p-7 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-white/[0.04]"
+                      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-7 transition duration-300 hover:border-cyan-300/25"
                     >
+                      <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-cyan-300/70 via-cyan-300/15 to-transparent" />
+
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-xs font-medium tracking-[0.2em] text-white/25">
                           {String(index + 1).padStart(2, "0")}
                         </span>
 
                         {item.date && (
-                          <span className="text-xs text-cyan-300/70">
+                          <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-cyan-300/70">
                             {item.date}
                           </span>
                         )}
                       </div>
 
-                      <h3 className="mt-6 text-xl font-semibold text-white">
+                      <h3 className="mt-5 text-xl font-semibold text-white">
                         {item.title}
                       </h3>
 
                       {item.description && (
-                        <p className="mt-4 leading-7 text-white/50">
+                        <p className="mt-3 leading-7 text-white/48">
                           {item.description}
                         </p>
                       )}
@@ -1455,7 +1490,7 @@ export default function PortfolioClient({
           <section
             id="skills"
             style={{ order: skillsSection.order }}
-            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-24"
+            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-20"
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
@@ -1479,15 +1514,16 @@ export default function PortfolioClient({
                   skills.map((skill) => (
                     <article
                       key={skill.id}
-                      className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 transition duration-300 hover:border-cyan-300/25 hover:bg-white/[0.04]"
+                      className="rounded-2xl border border-white/10 bg-white/[0.018] p-5 transition duration-300 hover:border-cyan-300/25 hover:bg-white/[0.035]"
                     >
-                      <div className="mb-5 h-1 w-10 rounded-full bg-cyan-300/60" />
+                      <div className="flex items-center gap-3">
+                        <span className="h-2 w-2 rounded-full bg-cyan-300/70" />
+                        <h3 className="text-base font-semibold text-white">
+                          {skill.title}
+                        </h3>
+                      </div>
 
-                      <h3 className="text-lg font-semibold text-white">
-                        {skill.title}
-                      </h3>
-
-                      <p className="mt-3 text-sm leading-6 text-white/45">
+                      <p className="mt-3 text-sm leading-6 text-white/42">
                         {skill.description}
                       </p>
                     </article>
@@ -1507,7 +1543,7 @@ export default function PortfolioClient({
           <section
             id="certifications"
             style={{ order: certificationsSection.order }}
-            className="reveal border-t border-white/10 px-6 py-24"
+            className="reveal border-t border-white/10 px-6 py-20"
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
@@ -1527,46 +1563,48 @@ export default function PortfolioClient({
               </div>
 
               {publicDataLoaded && certifications.length > 0 ? (
-                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   {certifications.map((certification) => (
                     <article
                       key={certification.id}
-                      className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#0a1019]/70 p-6 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25"
+                      className="rounded-2xl border border-white/10 bg-[#0a1019]/55 p-5 transition duration-300 hover:border-cyan-300/25"
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="rounded-full border border-cyan-300/15 bg-cyan-300/[0.05] px-3 py-1 text-xs capitalize text-cyan-300/75">
+                      <div className="flex items-start justify-between gap-5">
+                        <div className="min-w-0">
+                          <h3 className="text-lg font-semibold leading-7 text-white">
+                            {certification.title}
+                          </h3>
+
+                          {certification.issuer && (
+                            <p className="mt-1.5 text-sm text-white/42">
+                              {certification.issuer}
+                            </p>
+                          )}
+                        </div>
+
+                        <span className="shrink-0 rounded-full border border-cyan-300/15 bg-cyan-300/[0.05] px-2.5 py-1 text-[11px] capitalize text-cyan-300/75">
                           {certification.status.replaceAll("-", " ")}
                         </span>
-
-                        <span className="text-cyan-300/60">✓</span>
                       </div>
 
-                      <h3 className="mt-6 text-xl font-semibold leading-7 text-white">
-                        {certification.title}
-                      </h3>
+                      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                        {certification.issue_date && (
+                          <span className="text-white/28">
+                            Issued {certification.issue_date}
+                          </span>
+                        )}
 
-                      {certification.issuer && (
-                        <p className="mt-2 text-sm text-white/45">
-                          {certification.issuer}
-                        </p>
-                      )}
-
-                      {certification.issue_date && (
-                        <p className="mt-4 text-xs text-white/30">
-                          Issued {certification.issue_date}
-                        </p>
-                      )}
-
-                      {certification.credential_url && (
-                        <a
-                          href={certification.credential_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-auto pt-6 text-sm font-medium text-cyan-300 transition hover:text-cyan-200"
-                        >
-                          View Credential ↗
-                        </a>
-                      )}
+                        {certification.credential_url && (
+                          <a
+                            href={certification.credential_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-cyan-300 transition hover:text-cyan-200"
+                          >
+                            View Credential ↗
+                          </a>
+                        )}
+                      </div>
                     </article>
                   ))}
                 </div>
@@ -1584,7 +1622,7 @@ export default function PortfolioClient({
           <section
             id="about"
             style={{ order: aboutSection.order }}
-            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-24"
+            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-20"
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
@@ -1647,7 +1685,7 @@ export default function PortfolioClient({
           <section
             id="contact"
             style={{ order: contactSection.order }}
-            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-24"
+            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-20"
           >
             <div className="mx-auto max-w-6xl">
               <div className="rounded-3xl border border-white/10 bg-[#0a1019]/80 p-8 md:p-12">
