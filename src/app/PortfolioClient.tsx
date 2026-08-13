@@ -149,6 +149,7 @@ export default function PortfolioClient({
   slug,
 }: PortfolioClientProps) {
   const [question, setQuestion] = useState("");
+  const [submittedQuestion, setSubmittedQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -412,9 +413,13 @@ export default function PortfolioClient({
     }
   }
 
-  async function askAgent() {
-    if (!question.trim()) return;
+  async function askAgent(questionOverride?: string) {
+    const questionToAsk = (questionOverride ?? question).trim();
 
+    if (!questionToAsk) return;
+
+    setQuestion(questionToAsk);
+    setSubmittedQuestion(questionToAsk);
     setLoading(true);
     setAnswer("");
 
@@ -425,7 +430,7 @@ export default function PortfolioClient({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          question,
+          question: questionToAsk,
           slug,
         }),
       });
@@ -707,29 +712,28 @@ export default function PortfolioClient({
           className="relative flex min-h-screen items-center overflow-hidden px-6 pb-20 pt-32"
         >
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute left-1/2 top-[-16rem] h-[38rem] w-[38rem] -translate-x-1/2 rounded-full bg-cyan-400/[0.07] blur-[150px]" />
-            <div className="absolute right-[-10rem] top-[18%] h-[30rem] w-[30rem] rounded-full bg-violet-500/[0.06] blur-[140px]" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:linear-gradient(to_bottom,black,transparent_86%)]" />
+            <div className="absolute left-[-10rem] top-[15%] h-[30rem] w-[30rem] rounded-full bg-cyan-400/[0.05] blur-[150px]" />
+            <div className="absolute right-[-8rem] top-[18%] h-[30rem] w-[30rem] rounded-full bg-violet-500/[0.05] blur-[150px]" />
           </div>
 
           <div className="relative mx-auto w-full max-w-7xl">
             <div className="grid items-center gap-14 lg:grid-cols-[1.25fr_0.75fr] lg:gap-20">
               <div>
-                <p className="mb-5 text-sm font-medium uppercase tracking-[0.24em] text-cyan-300/70">
+                <p className="mb-5 text-sm font-medium uppercase tracking-[0.24em] text-cyan-300/75">
                   {heroTitle}
                 </p>
 
-                <h1 className="max-w-4xl text-5xl font-bold leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl md:text-7xl lg:text-[5.2rem]">
+                <h1 className="max-w-4xl text-5xl font-bold leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl md:text-7xl lg:text-[5.1rem]">
                   {heroName}
                 </h1>
 
                 {heroTagline && (
-                  <p className="mt-6 max-w-3xl text-sm font-medium tracking-wide text-cyan-100/75 md:text-base">
+                  <p className="mt-6 max-w-3xl text-base font-medium text-cyan-100/75 md:text-lg">
                     {heroTagline}
                   </p>
                 )}
 
-                <p className="mt-6 max-w-3xl text-sm leading-7 text-white/50 md:text-base">
+                <p className="mt-5 max-w-2xl text-sm leading-7 text-white/48 md:text-base">
                   {heroBio}
                 </p>
 
@@ -748,36 +752,38 @@ export default function PortfolioClient({
                     <a
                       href="#projects"
                       onClick={() => setActiveSection("projects")}
-                      className="rounded-xl border border-cyan-300/25 bg-cyan-300/[0.07] px-6 py-3.5 font-medium text-cyan-100 transition duration-300 hover:-translate-y-1 hover:bg-cyan-300/[0.14] hover:text-white"
+                      className="rounded-xl border border-white/10 bg-white/[0.025] px-6 py-3.5 font-medium text-white/70 transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
                     >
-                      Browse Portfolio →
+                      View My Work →
                     </a>
                   )}
                 </div>
+
+                <p className="mt-7 text-sm text-white/28">
+                  Ask first, or browse the portfolio normally.
+                </p>
               </div>
 
-              <div className="relative mx-auto w-full max-w-md lg:mx-0">
-                <div className="absolute -inset-4 rounded-[2rem] bg-cyan-300/[0.03] blur-2xl" />
-
-                <div className="relative rounded-[2rem] border border-white/10 bg-[#0a1019]/95 p-7 shadow-2xl shadow-black/30">
+              <div className="mx-auto w-full max-w-md lg:mx-0">
+                <div className="rounded-[1.75rem] border border-white/10 bg-[#0a1019]/90 p-7 shadow-2xl shadow-black/30">
                   <div className="flex items-start justify-between gap-5">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
+                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-300/70">
                         Profile
                       </p>
 
-                      <h2 className="mt-3 text-2xl font-semibold text-white">
+                      <h2 className="mt-3 text-2xl font-semibold leading-8 text-white">
                         {heroTitle}
                       </h2>
 
                       {profile?.location && (
-                        <p className="mt-2 text-sm text-white/40">
+                        <p className="mt-2 text-sm text-white/38">
                           {profile.location}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-300">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06] text-cyan-300">
                       ✦
                     </div>
                   </div>
@@ -795,35 +801,49 @@ export default function PortfolioClient({
                     </div>
                   )}
 
-                  <div className="mt-7 border-t border-white/10 pt-6">
-                    <button
-                      type="button"
-                      onClick={downloadLatestCv}
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-5 py-3.5 font-medium text-white/65 transition duration-300 hover:border-cyan-300/25 hover:bg-white/[0.06] hover:text-white"
+                  {agentSection.visible && (
+                    <a
+                      href="#agent"
+                      onClick={() => setActiveSection("agent")}
+                      className="mt-7 flex w-full items-center justify-between rounded-xl border border-cyan-300/20 bg-cyan-300/[0.06] px-5 py-4 text-left transition hover:bg-cyan-300/[0.11]"
                     >
-                      Download CV ↓
-                    </button>
-                  </div>
+                      <span>
+                        <span className="block text-sm font-semibold text-cyan-100">
+                          Ask about {firstName}
+                        </span>
+                        <span className="mt-1 block text-xs text-white/30">
+                          Projects, skills, experience and education
+                        </span>
+                      </span>
+                      <span className="text-cyan-300">→</span>
+                    </a>
+                  )}
 
-                  <p className="mt-4 text-center text-xs text-white/25">
-                    Projects, skills, education and verified profile details.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={downloadLatestCv}
+                    className="mt-3 w-full rounded-xl border border-white/10 bg-white/[0.025] px-5 py-3.5 text-sm font-medium text-white/55 transition hover:border-cyan-300/20 hover:text-white"
+                  >
+                    Download CV ↓
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div className="mt-16 flex justify-center lg:justify-start">
-              <a
-                href="#agent"
-                onClick={() => setActiveSection("agent")}
-                className="group flex items-center gap-3 text-sm text-white/30 transition hover:text-white/60"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 transition group-hover:border-cyan-300/25">
-                  ↓
-                </span>
-                Start with my AI
-              </a>
-            </div>
+            {agentSection.visible && (
+              <div className="mt-14">
+                <a
+                  href="#agent"
+                  onClick={() => setActiveSection("agent")}
+                  className="group inline-flex items-center gap-3 text-sm text-white/28 transition hover:text-white/60"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 transition group-hover:border-cyan-300/25">
+                    ↓
+                  </span>
+                  Start with my AI
+                </a>
+              </div>
+            )}
           </div>
         </section>
 
@@ -834,193 +854,278 @@ export default function PortfolioClient({
             className="reveal relative border-t border-white/10 px-6 py-24"
           >
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
-              <div className="absolute left-[8%] top-[12%] h-80 w-80 rounded-full bg-cyan-400/[0.05] blur-[130px]" />
-              <div className="absolute right-[8%] bottom-[8%] h-80 w-80 rounded-full bg-violet-500/[0.04] blur-[130px]" />
+              <div className="absolute left-[-8rem] top-20 h-[28rem] w-[28rem] rounded-full bg-cyan-400/[0.055] blur-[140px]" />
+              <div className="absolute right-[-8rem] bottom-0 h-[30rem] w-[30rem] rounded-full bg-violet-500/[0.05] blur-[150px]" />
             </div>
 
             <div className="relative mx-auto max-w-6xl">
-              <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-                <div className="max-w-3xl">
-                  <div className="mb-4 flex flex-wrap items-center gap-3">
-                    <span className="rounded-full border border-cyan-300/20 bg-cyan-300/[0.07] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-cyan-200">
-                      AI Portfolio Assistant
-                    </span>
-
-                    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-3 py-1.5 text-xs text-white/45">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      Verified portfolio data only
-                    </span>
-                  </div>
-
-                  <h2 className="text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
-                    Ask {firstName}&apos;s AI.
-                  </h2>
-
-                  <p className="mt-5 max-w-2xl text-base leading-7 text-white/45 md:text-lg">
-                    Skip the scrolling. Ask about projects, skills, education,
-                    certifications, achievements, or experience and get an answer
-                    grounded in this portfolio.
-                  </p>
-                </div>
-
-                <div className="hidden shrink-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm text-white/40 lg:flex">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06] text-cyan-300">
-                    ✦
+              <div className="mx-auto max-w-3xl text-center">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <span className="rounded-full border border-cyan-300/20 bg-cyan-300/[0.07] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-200">
+                    AI Career Assistant
                   </span>
-                  <span>
-                    Built to help recruiters
-                    <br />
-                    find the right proof faster.
+
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-3 py-1.5 text-[11px] text-white/45">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    Verified portfolio data
                   </span>
                 </div>
+
+                <h2 className="mt-6 text-4xl font-bold tracking-[-0.04em] text-white md:text-5xl lg:text-6xl">
+                  Don&apos;t scroll. Just ask.
+                </h2>
+
+                <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-white/45 md:text-lg">
+                  Ask what matters about {firstName}&apos;s work, skills, experience,
+                  education, projects, or achievements. The assistant answers from
+                  information published on this Gradfolio.
+                </p>
               </div>
 
-              <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#09111b]/90 shadow-2xl shadow-black/30">
-                <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 md:px-6">
+              <div className="mt-12 overflow-hidden rounded-[2rem] border border-white/10 bg-[#09111b]/92 shadow-2xl shadow-black/30">
+                <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-7">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-300">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-300">
                       ✦
                     </div>
 
                     <div>
-                      <p className="font-semibold text-white">
-                        {firstName} AI
-                      </p>
+                      <p className="font-semibold text-white">{firstName} AI</p>
                       <p className="text-xs text-white/30">
-                        Portfolio-aware assistant
+                        Portfolio intelligence, without the searching
                       </p>
                     </div>
                   </div>
 
-                  <div className="hidden items-center gap-2 text-xs text-white/35 sm:flex">
+                  <div className="flex items-center gap-2 text-xs text-white/35">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Ready
+                    Ready to answer
                   </div>
                 </div>
 
-                <div className="grid lg:grid-cols-[0.72fr_1.28fr]">
-                  <aside className="border-b border-white/10 bg-white/[0.018] p-5 md:p-6 lg:border-b-0 lg:border-r">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-white">
-                          Quick questions
+                <div className="p-5 md:p-7">
+                  {!answer && !loading && (
+                    <div className="rounded-[1.6rem] border border-white/10 bg-black/20 px-6 py-10 text-center md:px-10 md:py-12">
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.07] text-2xl text-cyan-300 shadow-lg shadow-cyan-950/20">
+                        ✦
+                      </div>
+
+                      <p className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/65">
+                        Ask for the proof you need
+                      </p>
+
+                      <h3 className="mx-auto mt-3 max-w-xl text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                        What would you like to know about {firstName}?
+                      </h3>
+
+                      <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/35">
+                        Choose a question below or ask your own. You do not need to
+                        read the whole portfolio first.
+                      </p>
+                    </div>
+                  )}
+
+                  {loading && (
+                    <div className="flex min-h-[22rem] items-center justify-center rounded-[1.6rem] border border-white/10 bg-black/20 p-6">
+                      <div className="text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.07] text-2xl text-cyan-300">
+                          ✦
+                        </div>
+
+                        <p className="mt-5 text-base font-medium text-white/65">
+                          Looking through verified portfolio data...
                         </p>
-                        <p className="mt-1 text-xs text-white/30">
-                          Start with something recruiters commonly ask.
+
+                        <p className="mt-2 text-sm text-white/30">
+                          Building a focused answer for you.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {answer && !loading && (
+                    <div className="overflow-hidden rounded-[1.6rem] border border-cyan-300/15 bg-black/20">
+                      <div className="border-b border-white/10 bg-cyan-300/[0.035] px-6 py-5 md:px-8">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-300">
+                                ✦
+                              </div>
+
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/70">
+                                  {firstName} AI
+                                </p>
+                                <p className="mt-1 text-xs text-white/30">
+                                  Answered from verified portfolio information
+                                </p>
+                              </div>
+                            </div>
+
+                            {submittedQuestion && (
+                              <div className="mt-5 rounded-xl border border-white/10 bg-black/15 px-4 py-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25">
+                                  Your question
+                                </p>
+                                <p className="mt-1.5 text-sm leading-6 text-white/60">
+                                  {submittedQuestion}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAnswer("");
+                              setQuestion("");
+                              setSubmittedQuestion("");
+                            }}
+                            className="shrink-0 rounded-lg border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/40 transition hover:border-cyan-300/20 hover:text-white/70"
+                          >
+                            New question
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="px-6 py-7 md:px-8 md:py-8">
+                        <p className="whitespace-pre-wrap text-[15px] leading-8 text-white/72 md:text-base">
+                          {answer}
+                        </p>
+
+                        <div className="mt-8 border-t border-white/10 pt-6">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/30">
+                            Go straight to the proof
+                          </p>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {isSectionActuallyVisible(projectsSection) && (
+                              <a
+                                href="#projects"
+                                onClick={() => setActiveSection("projects")}
+                                className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
+                              >
+                                View Projects →
+                              </a>
+                            )}
+
+                            {isSectionActuallyVisible(experienceSection) && (
+                              <a
+                                href="#experience"
+                                onClick={() => setActiveSection("experience")}
+                                className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
+                              >
+                                View Experience →
+                              </a>
+                            )}
+
+                            {isSectionActuallyVisible(skillsSection) && (
+                              <a
+                                href="#skills"
+                                onClick={() => setActiveSection("skills")}
+                                className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
+                              >
+                                View Skills →
+                              </a>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={downloadLatestCv}
+                              className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] px-4 py-2.5 text-sm font-medium text-cyan-200 transition hover:bg-cyan-300/[0.14] hover:text-white"
+                            >
+                              Download CV ↓
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-5">
+                    <div className="mb-3 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-white/65">
+                          {answer ? "Ask a follow-up" : "Quick questions"}
+                        </p>
+                        <p className="mt-1 text-xs text-white/28">
+                          {answer
+                            ? "Continue with another recruiter-style question."
+                            : "Start with something recruiters commonly ask."}
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-5 space-y-2.5">
+                    <div className="grid gap-2.5 md:grid-cols-2">
                       {suggestions.length > 0 ? (
                         suggestions.map((suggestion, index) => (
                           <button
                             key={suggestion}
                             type="button"
-                            onClick={() => setQuestion(suggestion)}
-                            className="group flex w-full items-start gap-3 rounded-xl border border-white/10 bg-black/10 p-4 text-left transition hover:border-cyan-300/25 hover:bg-cyan-300/[0.04]"
+                            onClick={() => askAgent(suggestion)}
+                            disabled={loading}
+                            className="group flex min-h-[4.7rem] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-cyan-300/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
                           >
-                            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.025] text-[10px] font-medium text-white/30 transition group-hover:border-cyan-300/20 group-hover:text-cyan-300">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/15 text-[10px] font-semibold text-white/30 transition group-hover:border-cyan-300/20 group-hover:text-cyan-300">
                               {String(index + 1).padStart(2, "0")}
                             </span>
 
-                            <span className="text-sm leading-6 text-white/48 transition group-hover:text-white/75">
+                            <span className="text-sm leading-5 text-white/48 transition group-hover:text-white/75">
                               {suggestion}
+                            </span>
+
+                            <span className="ml-auto text-cyan-300/35 transition group-hover:translate-x-0.5 group-hover:text-cyan-300">
+                              →
                             </span>
                           </button>
                         ))
                       ) : (
-                        <div className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-white/30">
+                        <div className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-white/30 md:col-span-2">
                           Suggested questions are loading...
                         </div>
                       )}
                     </div>
-                  </aside>
+                  </div>
 
-                  <div className="p-5 md:p-6">
-                    <div className="flex min-h-[22rem] flex-col">
-                      <div className="flex-1 rounded-2xl border border-white/10 bg-black/20 p-5 md:p-6">
-                        {loading ? (
-                          <div className="flex h-full min-h-64 items-center justify-center">
-                            <div className="text-center">
-                              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-300">
-                                ✦
-                              </div>
-                              <p className="mt-4 text-sm text-white/45">
-                                Thinking through verified portfolio data...
-                              </p>
-                            </div>
-                          </div>
-                        ) : answer ? (
-                          <div className="flex items-start gap-4">
-                            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-300">
-                              ✦
-                            </div>
+                  <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        type="text"
+                        value={question}
+                        onChange={(event) => setQuestion(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            askAgent();
+                          }
+                        }}
+                        placeholder={`Ask anything about ${firstName}'s profile...`}
+                        className="min-h-14 flex-1 rounded-xl border border-transparent bg-transparent px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/25 focus:bg-black/10"
+                      />
 
-                            <div className="max-w-3xl">
-                              <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300/70">
-                                {firstName} AI
-                              </p>
-                              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-white/65 md:text-base">
-                                {answer}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex h-full min-h-64 items-center justify-center">
-                            <div className="max-w-md text-center">
-                              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.07] text-xl text-cyan-300">
-                                ✦
-                              </div>
-
-                              <h3 className="mt-5 text-xl font-semibold text-white">
-                                What would you like to know?
-                              </h3>
-
-                              <p className="mt-3 text-sm leading-6 text-white/35">
-                                Ask a direct question about {firstName}&apos;s work,
-                                skills, experience, education, or projects.
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-2">
-                        <div className="flex flex-col gap-2 sm:flex-row">
-                          <input
-                            type="text"
-                            value={question}
-                            onChange={(event) => setQuestion(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                askAgent();
-                              }
-                            }}
-                            placeholder={`Ask about ${firstName}'s projects, skills, experience...`}
-                            className="min-h-14 flex-1 rounded-xl border border-transparent bg-transparent px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/25 focus:bg-black/10"
-                          />
-
-                          <button
-                            type="button"
-                            onClick={askAgent}
-                            disabled={loading || !question.trim()}
-                            className="min-h-14 rounded-xl bg-cyan-300 px-7 py-3 font-semibold text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            {loading ? "Thinking..." : "Ask AI →"}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex flex-col gap-2 text-xs text-white/25 sm:flex-row sm:items-center sm:justify-between">
-                        <span>
-                          Answers use verified information published on this Gradfolio.
-                        </span>
-                        <span>AI can say when information is unavailable.</span>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => askAgent()}
+                        disabled={loading || !question.trim()}
+                        className="min-h-14 rounded-xl bg-cyan-300 px-7 py-3 font-semibold text-black transition hover:-translate-y-0.5 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {loading ? "Thinking..." : "Ask AI →"}
+                      </button>
                     </div>
                   </div>
+
+                  <div className="mt-3 flex flex-col gap-2 text-xs text-white/24 sm:flex-row sm:items-center sm:justify-between">
+                    <span>Grounded in information published on this Gradfolio.</span>
+                    <span>When the answer is not available, the AI can say so.</span>
+                  </div>
                 </div>
+              </div>
+
+              <div className="mt-5 flex justify-center">
+                <p className="inline-flex items-center gap-2 text-xs text-white/28">
+                  <span className="text-cyan-300">✦</span>
+                  Built to help recruiters and visitors find relevant proof faster.
+                </p>
               </div>
             </div>
           </section>
@@ -1324,7 +1429,7 @@ export default function PortfolioClient({
 
                             <div className="p-6 lg:p-7">
                               {item.description ? (
-                                <p className="max-w-4xl whitespace-pre-line leading-7 text-white/52">
+                                <p className="max-w-3xl whitespace-pre-line text-[15px] leading-7 text-white/50">
                                   {item.description}
                                 </p>
                               ) : (
@@ -1563,35 +1668,40 @@ export default function PortfolioClient({
               </div>
 
               {publicDataLoaded && certifications.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {certifications.map((certification) => (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {certifications.map((certification, index) => (
                     <article
                       key={certification.id}
-                      className="rounded-2xl border border-white/10 bg-[#0a1019]/55 p-5 transition duration-300 hover:border-cyan-300/25"
+                      className="group rounded-2xl border border-white/10 bg-[#0a1019]/45 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-white/[0.025]"
                     >
-                      <div className="flex items-start justify-between gap-5">
-                        <div className="min-w-0">
-                          <h3 className="text-lg font-semibold leading-7 text-white">
-                            {certification.title}
-                          </h3>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-[10px] font-semibold tracking-[0.22em] text-white/20">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
 
-                          {certification.issuer && (
-                            <p className="mt-1.5 text-sm text-white/42">
-                              {certification.issuer}
-                            </p>
-                          )}
-                        </div>
-
-                        <span className="shrink-0 rounded-full border border-cyan-300/15 bg-cyan-300/[0.05] px-2.5 py-1 text-[11px] capitalize text-cyan-300/75">
+                        <span className="inline-flex items-center gap-2 text-[11px] capitalize text-cyan-300/70">
+                          <span className="h-1.5 w-1.5 rounded-full bg-cyan-300/70" />
                           {certification.status.replaceAll("-", " ")}
                         </span>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-                        {certification.issue_date && (
-                          <span className="text-white/28">
-                            Issued {certification.issue_date}
+                      <h3 className="mt-5 text-base font-semibold leading-6 text-white">
+                        {certification.title}
+                      </h3>
+
+                      {certification.issuer && (
+                        <p className="mt-2 text-sm text-white/38">
+                          {certification.issuer}
+                        </p>
+                      )}
+
+                      <div className="mt-5 flex min-h-5 flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] pt-4 text-xs">
+                        {certification.issue_date ? (
+                          <span className="text-white/25">
+                            {certification.issue_date}
                           </span>
+                        ) : (
+                          <span />
                         )}
 
                         {certification.credential_url && (
@@ -1599,9 +1709,9 @@ export default function PortfolioClient({
                             href={certification.credential_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-medium text-cyan-300 transition hover:text-cyan-200"
+                            className="font-medium text-cyan-300/80 transition group-hover:text-cyan-200"
                           >
-                            View Credential ↗
+                            Credential ↗
                           </a>
                         )}
                       </div>
@@ -1635,45 +1745,62 @@ export default function PortfolioClient({
                 </h2>
               </div>
 
-              <div className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-8 md:p-9">
-                  <p className="text-base leading-8 text-white/55 md:text-lg">
-                    {aboutPrimaryText}
-                  </p>
+              <div className="grid overflow-hidden rounded-3xl border border-white/10 bg-[#0a1019]/55 lg:grid-cols-[1.25fr_0.75fr]">
+                <div className="relative p-8 md:p-10 lg:p-12">
+                  <div className="absolute left-0 top-10 h-20 w-px bg-gradient-to-b from-cyan-300/70 to-transparent" />
 
-                  {aboutSecondaryText && (
-                    <p className="mt-6 text-base leading-8 text-white/45 md:text-lg">
-                      {aboutSecondaryText}
+                  <div className="max-w-3xl">
+                    <p className="text-base leading-8 text-white/58 md:text-lg md:leading-9">
+                      {aboutPrimaryText}
                     </p>
-                  )}
+
+                    {aboutSecondaryText && (
+                      <p className="mt-7 border-t border-white/[0.07] pt-7 text-base leading-8 text-white/40 md:text-lg md:leading-9">
+                        {aboutSecondaryText}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
-                <aside className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.035] p-8">
-                  <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
-                    Focus
-                  </p>
+                <aside className="border-t border-white/10 bg-gradient-to-br from-cyan-300/[0.045] to-transparent p-8 md:p-10 lg:border-l lg:border-t-0">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
+                        Focus
+                      </p>
 
-                  <h3 className="mt-3 text-xl font-semibold text-white">
-                    {aboutFocusHeading}
-                  </h3>
+                      <h3 className="mt-3 text-xl font-semibold text-white">
+                        {aboutFocusHeading}
+                      </h3>
+                    </div>
 
-                  <ul className="mt-6 space-y-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] text-lg text-cyan-300">
+                      ✦
+                    </div>
+                  </div>
+
+                  <div className="mt-7 space-y-2.5">
                     {publicDataLoaded && careerFocus.length > 0 ? (
-                      careerFocus.map((item) => (
-                        <li
+                      careerFocus.map((item, index) => (
+                        <div
                           key={item.id}
-                          className="flex items-start gap-3 text-sm leading-6 text-white/55"
+                          className="flex items-center gap-4 rounded-xl border border-white/[0.07] bg-black/10 px-4 py-3"
                         >
-                          <span className="mt-1 text-cyan-300">→</span>
-                          <span>{item.title}</span>
-                        </li>
+                          <span className="text-[10px] font-semibold tracking-[0.18em] text-cyan-300/55">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
+
+                          <span className="text-sm leading-6 text-white/58">
+                            {item.title}
+                          </span>
+                        </div>
                       ))
                     ) : (
-                      <li className="text-sm text-white/30">
+                      <p className="text-sm text-white/30">
                         Add focus areas from the admin dashboard.
-                      </li>
+                      </p>
                     )}
-                  </ul>
+                  </div>
                 </aside>
               </div>
             </div>
@@ -1688,100 +1815,123 @@ export default function PortfolioClient({
             className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-20"
           >
             <div className="mx-auto max-w-6xl">
-              <div className="rounded-3xl border border-white/10 bg-[#0a1019]/80 p-8 md:p-12">
-                <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end">
-                  <div>
+              <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0a1019]/85">
+                <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-cyan-300/[0.08]" />
+                <div className="pointer-events-none absolute -right-8 -top-12 h-48 w-48 rounded-full border border-cyan-300/[0.06]" />
+
+                <div className="grid gap-10 p-8 md:p-10 lg:grid-cols-[1fr_0.85fr] lg:p-12">
+                  <div className="relative">
                     <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
                       {contactLabel}
                     </p>
 
-                    <h2 className="max-w-3xl text-4xl font-bold tracking-tight md:text-5xl">
+                    <h2 className="max-w-2xl text-4xl font-bold tracking-tight md:text-5xl">
                       {contactHeading}
                     </h2>
 
                     {contactDescription && (
-                      <p className="mt-5 max-w-3xl text-base leading-7 text-white/45 md:text-lg">
+                      <p className="mt-5 max-w-2xl text-base leading-7 text-white/45 md:text-lg">
                         {contactDescription}
                       </p>
                     )}
+
+                    <div className="mt-8 flex items-center gap-3 text-sm text-white/35">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] text-cyan-300">
+                        ✦
+                      </span>
+                      <span>Open to conversations, opportunities, and collaborations.</span>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3 lg:justify-end">
-                    {email && (
-                      <a
-                        href={`mailto:${email}`}
-                        className={contactButtonClass}
-                      >
-                        Email
-                      </a>
-                    )}
+                  <div className="relative rounded-2xl border border-white/[0.08] bg-black/10 p-5 md:p-6">
+                    <p className="text-xs uppercase tracking-[0.22em] text-white/28">
+                      Connect
+                    </p>
 
-                    {linkedIn && (
-                      <a
-                        href={linkedIn}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={contactButtonClass}
-                      >
-                        LinkedIn
-                      </a>
-                    )}
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      {email && (
+                        <a
+                          href={`mailto:${email}`}
+                          className="group flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-4 text-sm text-white/70 transition hover:border-cyan-300/25 hover:text-white"
+                        >
+                          <span>Email</span>
+                          <span className="text-cyan-300/60 transition group-hover:translate-x-0.5">↗</span>
+                        </a>
+                      )}
 
-                    {github && (
-                      <a
-                        href={github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={contactButtonClass}
-                      >
-                        GitHub
-                      </a>
-                    )}
+                      {linkedIn && (
+                        <a
+                          href={linkedIn}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-4 text-sm text-white/70 transition hover:border-cyan-300/25 hover:text-white"
+                        >
+                          <span>LinkedIn</span>
+                          <span className="text-cyan-300/60 transition group-hover:translate-x-0.5">↗</span>
+                        </a>
+                      )}
 
-                    <button
-                      type="button"
-                      onClick={downloadLatestCv}
-                      className="rounded-xl bg-cyan-300 px-6 py-3 font-semibold text-black transition hover:bg-cyan-200"
-                    >
-                      Download CV ↓
-                    </button>
+                      {github && (
+                        <a
+                          href={github}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-4 text-sm text-white/70 transition hover:border-cyan-300/25 hover:text-white"
+                        >
+                          <span>GitHub</span>
+                          <span className="text-cyan-300/60 transition group-hover:translate-x-0.5">↗</span>
+                        </a>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={downloadLatestCv}
+                        className="flex items-center justify-between rounded-xl bg-cyan-300 px-4 py-4 text-left text-sm font-semibold text-black transition hover:bg-cyan-200"
+                      >
+                        <span>Download CV</span>
+                        <span>↓</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-12 border-t border-white/10 pt-7">
-                  <div className="flex flex-col gap-4 text-sm text-white/25 sm:flex-row sm:items-center sm:justify-between">
-                    <p>
-                      © {new Date().getFullYear()}{" "}
-                      {profile?.full_name || "Portfolio Owner"}
-                    </p>
+                <div className="border-t border-white/[0.08] px-8 py-6 md:px-10 lg:px-12">
+                  <div className="flex flex-col gap-5 text-sm sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-white/25">
+                        © {new Date().getFullYear()}{" "}
+                        {profile?.full_name || "Portfolio Owner"}
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/20">
+                        <span>
+                          Built by{" "}
+                          <a
+                            href="mailto:ebraheimpasha@gmail.com"
+                            className="text-cyan-300/60 transition hover:text-cyan-200"
+                          >
+                            Ebraheim Mohamed Pasha Qadri
+                          </a>
+                        </span>
+
+                        <span className="text-white/10">·</span>
+
+                        <a
+                          href="mailto:ebraheimpasha@gmail.com?subject=Website%20Enquiry"
+                          className="text-cyan-300/60 transition hover:text-cyan-200"
+                        >
+                          Contact Me
+                        </a>
+                      </div>
+                    </div>
 
                     <a
                       href="#home"
                       onClick={() => setActiveSection("home")}
-                      className="transition hover:text-cyan-300"
+                      className="inline-flex items-center gap-2 text-sm text-white/30 transition hover:text-cyan-300"
                     >
-                      Back to top ↑
-                    </a>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-white/20">
-                    <span>
-                      Built by{" "}
-                      <a
-                        href="mailto:ebraheimpasha@gmail.com"
-                        className="text-cyan-300/60 transition hover:text-cyan-200"
-                      >
-                        Ebraheim Mohamed Pasha Qadri
-                      </a>
-                    </span>
-
-                    <span className="text-white/10">·</span>
-
-                    <a
-                      href="mailto:ebraheimpasha@gmail.com?subject=Website%20Enquiry"
-                      className="text-cyan-300/60 transition hover:text-cyan-200"
-                    >
-                      Contact Me
+                      Back to top
+                      <span>↑</span>
                     </a>
                   </div>
                 </div>
