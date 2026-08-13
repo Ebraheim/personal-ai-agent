@@ -4,13 +4,13 @@ const features = [
   {
     title: "AI-powered setup",
     description:
-      "Upload your CV, review the extracted information, and turn it into a structured website without starting from a blank page.",
+      "Upload your CV, review the extracted information, and turn it into a polished career website without starting from a blank page.",
     icon: "✦",
   },
   {
     title: "Your own public website",
     description:
-      "Every account gets its own public profile URL with projects, experience, skills, education, achievements, and more.",
+      "Every student gets a public profile URL with projects, experience, skills, education, achievements, certifications, and more.",
     icon: "↗",
   },
   {
@@ -22,7 +22,7 @@ const features = [
   {
     title: "Easy website editor",
     description:
-      "Update your homepage, projects, experience, skills, certifications, contact details, and other sections from one dashboard.",
+      "Update your homepage, projects, experience, education, skills, certifications, contact details, and more from one simple dashboard.",
     icon: "◫",
   },
   {
@@ -34,7 +34,7 @@ const features = [
   {
     title: "Always ready to improve",
     description:
-      "Keep your website current as your projects, career, qualifications, and achievements grow.",
+      "Keep your Gradfolio current as you gain new projects, internships, skills, qualifications, and achievements.",
     icon: "○",
   },
 ];
@@ -44,25 +44,25 @@ const steps = [
     number: "01",
     title: "Create your account",
     description:
-      "Sign up and reserve your personal website address.",
+      "Sign up and reserve your personal Gradfolio address.",
   },
   {
     number: "02",
     title: "Import or build manually",
     description:
-      "Upload your CV for AI-assisted setup or enter your information yourself.",
+      "Upload your CV for AI-assisted setup or enter your student and career information yourself.",
   },
   {
     number: "03",
     title: "Review your content",
     description:
-      "Choose what should appear publicly and edit anything before publishing.",
+      "Review the extracted content, edit anything you want, and choose what should appear publicly.",
   },
   {
     number: "04",
     title: "Share your website",
     description:
-      "Use your public link as a portfolio, professional profile, or personal website.",
+      "Share one clean link with recruiters instead of sending only a traditional CV.",
   },
 ];
 
@@ -78,10 +78,10 @@ export default function HomePage() {
 
             <div>
               <p className="font-semibold tracking-tight">
-                AI Website
+                Gradfolio
               </p>
               <p className="text-xs text-white/35">
-                Personal portfolio builder
+                AI-powered career websites
               </p>
             </div>
           </Link>
@@ -132,20 +132,18 @@ export default function HomePage() {
           <div className="mx-auto max-w-4xl text-center">
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-cyan-300/15 bg-cyan-300/[0.06] px-4 py-2 text-sm text-cyan-200">
               <span>✦</span>
-              AI-assisted personal website builder
+              AI-powered career websites for students and graduates
             </div>
 
             <h1 className="mt-8 text-5xl font-bold leading-[1.05] tracking-[-0.04em] md:text-7xl">
-              Turn your experience into
+              Turn your CV into
               <span className="block bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent">
                 a website that speaks for you.
               </span>
             </h1>
 
             <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-white/50 md:text-xl">
-              Create a professional public website, manage your career content,
-              and give visitors an AI assistant that can answer questions from
-              your verified information.
+              Turn your CV, projects, skills, education, and experience into a polished public career website with an AI assistant that answers using your verified information.
             </p>
 
             <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
@@ -153,7 +151,7 @@ export default function HomePage() {
                 href="/admin"
                 className="rounded-xl bg-cyan-300 px-7 py-3.5 font-semibold text-black transition hover:-translate-y-0.5 hover:bg-cyan-200"
               >
-                Build My Website →
+                Build My Gradfolio →
               </Link>
 
               <Link
@@ -165,7 +163,7 @@ export default function HomePage() {
             </div>
 
             <p className="mt-5 text-sm text-white/25">
-              Start from your CV or build your website manually.
+              Start from your CV, review the extracted content, and publish when you are ready.
             </p>
           </div>
 
@@ -191,7 +189,7 @@ export default function HomePage() {
               <div className="grid gap-4 pt-5 md:grid-cols-[1.4fr_0.8fr]">
                 <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-7">
                   <p className="text-sm text-cyan-300">
-                    Professional profile
+                    Graduate career profile
                   </p>
 
                   <div className="mt-5 h-8 w-3/4 rounded-lg bg-white/10" />
@@ -257,12 +255,11 @@ export default function HomePage() {
             </p>
 
             <h2 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">
-              More than a static portfolio.
+              More than a normal CV.
             </h2>
 
             <p className="mt-5 max-w-2xl text-lg leading-8 text-white/45">
-              Your website becomes a living professional profile that you can
-              update as your work changes.
+              Gradfolio gives students and fresh graduates one polished place to show projects, skills, education, experience, achievements, and verified career information.
             </p>
           </div>
 
@@ -298,12 +295,11 @@ export default function HomePage() {
               </p>
 
               <h2 className="mt-4 text-4xl font-bold tracking-tight md:text-5xl">
-                From account to public website.
+                From CV to career website.
               </h2>
 
               <p className="mt-5 text-lg leading-8 text-white/45">
-                Start quickly with AI-assisted CV extraction, but keep control
-                over what actually gets published.
+                Upload your CV, review what Gradfolio extracts, edit anything you want, and decide exactly what goes public.
               </p>
 
               <Link
@@ -344,7 +340,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-6 py-24">
           <div className="mx-auto max-w-4xl text-center">
             <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">
-              Your professional presence
+              Your career presence
             </p>
 
             <h2 className="mt-5 text-4xl font-bold tracking-tight md:text-6xl">
@@ -352,9 +348,7 @@ export default function HomePage() {
             </h2>
 
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/45">
-              Give recruiters, clients, collaborators, and visitors one place
-              to understand who you are, what you have done, and how to reach
-              you.
+              Give recruiters one clear place to understand who you are, what you have built, what you have learned, and how to contact you.
             </p>
 
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
@@ -362,7 +356,7 @@ export default function HomePage() {
                 href="/admin"
                 className="rounded-xl bg-cyan-300 px-7 py-3.5 font-semibold text-black transition hover:bg-cyan-200"
               >
-                Create My Website →
+                Create My Gradfolio →
               </Link>
 
               <Link
@@ -380,7 +374,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-6 py-8 text-sm text-white/30 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <span className="text-cyan-300">✦</span>
-            <span>AI Website</span>
+            <span>Gradfolio</span>
           </div>
 
           <div className="flex flex-wrap gap-5">
@@ -394,12 +388,12 @@ export default function HomePage() {
               href="/ebraheim"
               className="transition hover:text-white"
             >
-              Example Website
+              Example Gradfolio
             </Link>
           </div>
 
           <p>
-            © {new Date().getFullYear()} AI Website
+            © {new Date().getFullYear()} Gradfolio
           </p>
         </div>
       </footer>
