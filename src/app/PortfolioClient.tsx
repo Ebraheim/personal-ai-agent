@@ -509,18 +509,20 @@ export default function PortfolioClient({
     (sectionHasData[section.key] ?? true);
 
   const orderedNavigation = [
-    projectsSection,
-    experienceSection,
-    educationSection,
-    achievementsSection,
-    skillsSection,
-    certificationsSection,
-    aboutSection,
     agentSection,
-    contactSection,
-  ]
-    .filter((section) => isSectionActuallyVisible(section))
-    .sort((a, b) => a.order - b.order);
+    ...[
+      projectsSection,
+      experienceSection,
+      educationSection,
+      achievementsSection,
+      skillsSection,
+      certificationsSection,
+      aboutSection,
+      contactSection,
+    ]
+      .filter((section) => isSectionActuallyVisible(section))
+      .sort((a, b) => a.order - b.order),
+  ].filter((section) => isSectionActuallyVisible(section));
 
   const heroTitle =
     profile?.professional_title || "Professional Portfolio";
@@ -729,23 +731,23 @@ export default function PortfolioClient({
                 </p>
 
                 <div className="mt-9 flex flex-wrap gap-3">
-                  {isSectionActuallyVisible(projectsSection) && (
-                    <a
-                      href="#projects"
-                      onClick={() => setActiveSection("projects")}
-                      className="rounded-xl bg-cyan-300 px-6 py-3.5 font-semibold text-black transition duration-300 hover:-translate-y-1 hover:bg-cyan-200"
-                    >
-                      View My Work →
-                    </a>
-                  )}
-
                   {agentSection.visible && (
                     <a
                       href="#agent"
                       onClick={() => setActiveSection("agent")}
-                      className="rounded-xl border border-cyan-300/25 bg-cyan-300/[0.07] px-6 py-3.5 font-medium text-cyan-100 transition duration-300 hover:-translate-y-1 hover:bg-cyan-300/[0.14] hover:text-white"
+                      className="rounded-xl bg-cyan-300 px-6 py-3.5 font-semibold text-black transition duration-300 hover:-translate-y-1 hover:bg-cyan-200"
                     >
                       Ask My AI ✦
+                    </a>
+                  )}
+
+                  {isSectionActuallyVisible(projectsSection) && (
+                    <a
+                      href="#projects"
+                      onClick={() => setActiveSection("projects")}
+                      className="rounded-xl border border-cyan-300/25 bg-cyan-300/[0.07] px-6 py-3.5 font-medium text-cyan-100 transition duration-300 hover:-translate-y-1 hover:bg-cyan-300/[0.14] hover:text-white"
+                    >
+                      Browse Portfolio →
                     </a>
                   )}
                 </div>
@@ -809,18 +811,177 @@ export default function PortfolioClient({
 
             <div className="mt-16 flex justify-center lg:justify-start">
               <a
-                href="#projects"
-                onClick={() => setActiveSection("projects")}
+                href="#agent"
+                onClick={() => setActiveSection("agent")}
                 className="group flex items-center gap-3 text-sm text-white/30 transition hover:text-white/60"
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 transition group-hover:border-cyan-300/25">
                   ↓
                 </span>
-                Scroll to explore
+                Start with my AI
               </a>
             </div>
           </div>
         </section>
+
+        {/* AI AGENT */}
+        {agentSection.visible && (
+          <section
+            id="agent"
+            className="reveal relative border-t border-white/10 px-6 py-24"
+          >
+            <div className="pointer-events-none absolute right-[8%] top-[12%] h-72 w-72 rounded-full bg-cyan-400/[0.04] blur-[120px]" />
+
+            <div className="relative mx-auto max-w-6xl">
+              <div className="mb-12 max-w-3xl">
+                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                  AI Assistant
+                </p>
+
+                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
+                  Ask about my profile.
+                </h2>
+
+                <p className="mt-4 text-base leading-7 text-white/45 md:text-lg">
+                  Ask questions about my projects, skills, education,
+                  certifications, achievements, or experience. Answers are
+                  based on verified information from this portfolio.
+                </p>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr]">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
+                  <p className="text-sm font-semibold text-cyan-300">
+                    Try asking
+                  </p>
+
+                  <div className="mt-5 space-y-2">
+                    {suggestions.length > 0 ? (
+                      suggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          onClick={() => setQuestion(suggestion)}
+                          className="w-full rounded-xl border border-white/10 bg-black/10 p-4 text-left text-sm leading-6 text-white/45 transition hover:border-cyan-300/20 hover:bg-white/[0.04] hover:text-white/70"
+                        >
+                          {suggestion}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-sm text-white/30">
+                        Suggested questions are loading...
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-[#0a1019]/85 p-6 md:p-7">
+                  <div className="min-h-52 rounded-xl border border-white/10 bg-black/15 p-5">
+                    <p className="whitespace-pre-wrap text-sm leading-7 text-white/60">
+                      {loading
+                        ? "Thinking..."
+                        : answer ||
+                          "Ask a question and the AI assistant will answer using verified information from this portfolio."}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-3 md:flex-row">
+                    <input
+                      type="text"
+                      value={question}
+                      onChange={(event) => setQuestion(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          askAgent();
+                        }
+                      }}
+                      placeholder="Ask about projects, skills, experience..."
+                      className="flex-1 rounded-xl border border-white/10 bg-white/[0.035] px-5 py-4 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/35"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={askAgent}
+                      disabled={loading}
+                      className="rounded-xl bg-cyan-300 px-7 py-4 font-semibold text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {loading ? "Thinking..." : "Ask AI"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* RECRUITER SHORTCUTS */}
+        {agentSection.visible && (
+          <section
+            aria-label="Portfolio shortcuts"
+            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-8"
+          >
+            <div className="mx-auto flex max-w-6xl flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm font-medium text-white/70">
+                  Prefer to browse directly?
+                </p>
+                <p className="mt-1 text-sm text-white/35">
+                  Jump straight to the part of the portfolio you want to review.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {isSectionActuallyVisible(projectsSection) && (
+                  <a
+                    href="#projects"
+                    onClick={() => setActiveSection("projects")}
+                    className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
+                  >
+                    Projects
+                  </a>
+                )}
+
+                {isSectionActuallyVisible(experienceSection) && (
+                  <a
+                    href="#experience"
+                    onClick={() => setActiveSection("experience")}
+                    className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
+                  >
+                    Experience
+                  </a>
+                )}
+
+                {isSectionActuallyVisible(skillsSection) && (
+                  <a
+                    href="#skills"
+                    onClick={() => setActiveSection("skills")}
+                    className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
+                  >
+                    Skills
+                  </a>
+                )}
+
+                {isSectionActuallyVisible(educationSection) && (
+                  <a
+                    href="#education"
+                    onClick={() => setActiveSection("education")}
+                    className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
+                  >
+                    Education
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={downloadLatestCv}
+                  className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] px-4 py-2.5 text-sm font-medium text-cyan-200 transition hover:bg-cyan-300/[0.14] hover:text-white"
+                >
+                  Download CV ↓
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* PROJECTS */}
         {isSectionActuallyVisible(projectsSection) && (
@@ -1337,97 +1498,6 @@ export default function PortfolioClient({
                     )}
                   </ul>
                 </aside>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* AI AGENT */}
-        {agentSection.visible && (
-          <section
-            id="agent"
-            style={{ order: agentSection.order }}
-            className="reveal relative border-t border-white/10 px-6 py-24"
-          >
-            <div className="pointer-events-none absolute right-[8%] top-[12%] h-72 w-72 rounded-full bg-cyan-400/[0.04] blur-[120px]" />
-
-            <div className="relative mx-auto max-w-6xl">
-              <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-                  AI Assistant
-                </p>
-
-                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
-                  Ask about my profile.
-                </h2>
-
-                <p className="mt-4 text-base leading-7 text-white/45 md:text-lg">
-                  Ask questions about my projects, skills, education,
-                  certifications, achievements, or experience. Answers are
-                  based on verified information from this portfolio.
-                </p>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr]">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
-                  <p className="text-sm font-semibold text-cyan-300">
-                    Try asking
-                  </p>
-
-                  <div className="mt-5 space-y-2">
-                    {suggestions.length > 0 ? (
-                      suggestions.map((suggestion) => (
-                        <button
-                          key={suggestion}
-                          type="button"
-                          onClick={() => setQuestion(suggestion)}
-                          className="w-full rounded-xl border border-white/10 bg-black/10 p-4 text-left text-sm leading-6 text-white/45 transition hover:border-cyan-300/20 hover:bg-white/[0.04] hover:text-white/70"
-                        >
-                          {suggestion}
-                        </button>
-                      ))
-                    ) : (
-                      <p className="text-sm text-white/30">
-                        Suggested questions are loading...
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-[#0a1019]/85 p-6 md:p-7">
-                  <div className="min-h-52 rounded-xl border border-white/10 bg-black/15 p-5">
-                    <p className="whitespace-pre-wrap text-sm leading-7 text-white/60">
-                      {loading
-                        ? "Thinking..."
-                        : answer ||
-                          "Ask a question and the AI assistant will answer using verified information from this portfolio."}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-3 md:flex-row">
-                    <input
-                      type="text"
-                      value={question}
-                      onChange={(event) => setQuestion(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          askAgent();
-                        }
-                      }}
-                      placeholder="Ask about projects, skills, experience..."
-                      className="flex-1 rounded-xl border border-white/10 bg-white/[0.035] px-5 py-4 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/35"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={askAgent}
-                      disabled={loading}
-                      className="rounded-xl bg-cyan-300 px-7 py-4 font-semibold text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {loading ? "Thinking..." : "Ask AI"}
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
           </section>
