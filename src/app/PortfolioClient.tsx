@@ -149,7 +149,6 @@ export default function PortfolioClient({
   slug,
 }: PortfolioClientProps) {
   const [question, setQuestion] = useState("");
-  const [submittedQuestion, setSubmittedQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -168,6 +167,7 @@ export default function PortfolioClient({
   const [sections, setSections] = useState<PublicSection[]>([]);
   const [publicDataLoaded, setPublicDataLoaded] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   // Load the correct active nav item if the page opens with a hash.
   useEffect(() => {
@@ -362,9 +362,38 @@ export default function PortfolioClient({
     };
   }, [slug]);
 
-  // Scroll reveal animation.
+  // Premium top progress indicator.
   useEffect(() => {
-    const elements = document.querySelectorAll(".reveal");
+    function updateScrollProgress() {
+      const scrollableHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+
+      if (scrollableHeight <= 0) {
+        setScrollProgress(0);
+        return;
+      }
+
+      setScrollProgress(
+        Math.min(100, Math.max(0, (window.scrollY / scrollableHeight) * 100))
+      );
+    }
+
+    updateScrollProgress();
+    window.addEventListener("scroll", updateScrollProgress, { passive: true });
+    window.addEventListener("resize", updateScrollProgress);
+
+    return () => {
+      window.removeEventListener("scroll", updateScrollProgress);
+      window.removeEventListener("resize", updateScrollProgress);
+    };
+  }, []);
+
+  // Scroll reveal animation.
+  // Re-run after public Supabase data loads because many sections are rendered
+  // only after that data arrives. Without this, those later sections keep the
+  // hidden blur state forever because the observer never sees them.
+  useEffect(() => {
+    const elements = document.querySelectorAll(".reveal, .reveal-card");
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -376,16 +405,21 @@ export default function PortfolioClient({
         });
       },
       {
-        threshold: 0.12,
+        threshold: 0.08,
+        rootMargin: "0px 0px -4% 0px",
       }
     );
 
-    elements.forEach((element) => observer.observe(element));
+    elements.forEach((element) => {
+      if (!element.classList.contains("is-visible")) {
+        observer.observe(element);
+      }
+    });
 
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [publicDataLoaded]);
 
   async function downloadLatestCv() {
     try {
@@ -413,13 +447,9 @@ export default function PortfolioClient({
     }
   }
 
-  async function askAgent(questionOverride?: string) {
-    const questionToAsk = (questionOverride ?? question).trim();
+  async function askAgent() {
+    if (!question.trim()) return;
 
-    if (!questionToAsk) return;
-
-    setQuestion(questionToAsk);
-    setSubmittedQuestion(questionToAsk);
     setLoading(true);
     setAnswer("");
 
@@ -430,7 +460,7 @@ export default function PortfolioClient({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          question: questionToAsk,
+          question,
           slug,
         }),
       });
@@ -583,33 +613,332 @@ export default function PortfolioClient({
 
   return (
     <>
-      {/* SCROLL ANIMATION STYLES */}
+      {/* PREMIUM VISUAL + MOTION SYSTEM */}
       <style jsx global>{`
-        .reveal {
-          opacity: 0;
-          transform: translateY(28px);
-          transition:
-            opacity 0.75s ease,
-            transform 0.75s ease;
+        html {
+          scroll-behavior: smooth;
         }
 
-        .reveal.is-visible {
+        body {
+          background: #060a11;
+        }
+
+        ::selection {
+          background: rgba(103, 232, 249, 0.28);
+          color: white;
+        }
+
+        * {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(103, 232, 249, 0.25) rgba(255, 255, 255, 0.03);
+        }
+
+        *::-webkit-scrollbar {
+          width: 9px;
+        }
+
+        *::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        *::-webkit-scrollbar-thumb {
+          border: 2px solid #060a11;
+          border-radius: 999px;
+          background: linear-gradient(
+            180deg,
+            rgba(103, 232, 249, 0.5),
+            rgba(129, 140, 248, 0.32)
+          );
+        }
+
+        @keyframes aurora-drift {
+          0%,
+          100% {
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+          33% {
+            transform: translate3d(4%, -3%, 0) scale(1.08);
+          }
+          66% {
+            transform: translate3d(-3%, 4%, 0) scale(0.96);
+          }
+        }
+
+        @keyframes float-soft {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+
+        @keyframes pulse-soft {
+          0%,
+          100% {
+            opacity: 0.45;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.82;
+            transform: scale(1.08);
+          }
+        }
+
+        @keyframes shine-sweep {
+          0% {
+            transform: translateX(-140%) skewX(-16deg);
+          }
+          55%,
+          100% {
+            transform: translateX(240%) skewX(-16deg);
+          }
+        }
+
+        @keyframes gradient-breathe {
+          0%,
+          100% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+        }
+
+        @keyframes scroll-nudge {
+          0%,
+          100% {
+            transform: translateY(0);
+            opacity: 0.45;
+          }
+          50% {
+            transform: translateY(5px);
+            opacity: 1;
+          }
+        }
+
+        .premium-page-bg {
+          background:
+            radial-gradient(circle at 12% 8%, rgba(34, 211, 238, 0.07), transparent 30%),
+            radial-gradient(circle at 86% 15%, rgba(139, 92, 246, 0.065), transparent 27%),
+            radial-gradient(circle at 58% 65%, rgba(59, 130, 246, 0.035), transparent 34%),
+            #060a11;
+        }
+
+        .premium-grid {
+          background-image:
+            linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+          background-size: 58px 58px;
+          mask-image: linear-gradient(to bottom, black 0%, transparent 76%);
+        }
+
+        .premium-gradient-text {
+          background: linear-gradient(
+            110deg,
+            #ffffff 8%,
+            #ffffff 42%,
+            #a5f3fc 63%,
+            #c4b5fd 82%,
+            #ffffff 100%
+          );
+          background-size: 220% 220%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          animation: gradient-breathe 8s ease-in-out infinite;
+        }
+
+        .premium-card {
+          position: relative;
+          isolation: isolate;
+          box-shadow:
+            0 28px 80px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.035);
+        }
+
+        .premium-card::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          border-radius: inherit;
+          pointer-events: none;
+          background:
+            linear-gradient(
+              135deg,
+              rgba(103, 232, 249, 0.035),
+              transparent 36%,
+              rgba(139, 92, 246, 0.025)
+            );
+        }
+
+        .premium-card:hover {
+          box-shadow:
+            0 34px 90px rgba(0, 0, 0, 0.36),
+            0 0 55px rgba(34, 211, 238, 0.035),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .shine-button {
+          position: relative;
+          overflow: hidden;
+          isolation: isolate;
+        }
+
+        .shine-button::after {
+          content: "";
+          position: absolute;
+          inset: -30% auto -30% -25%;
+          width: 28%;
+          pointer-events: none;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.55),
+            transparent
+          );
+          animation: shine-sweep 4.8s ease-in-out infinite;
+        }
+
+        .reveal,
+        .reveal-card {
+          opacity: 0;
+          filter: blur(7px);
+          transform: translateY(34px) scale(0.988);
+          transition:
+            opacity 0.78s cubic-bezier(0.2, 0.8, 0.2, 1),
+            transform 0.78s cubic-bezier(0.2, 0.8, 0.2, 1),
+            filter 0.78s ease;
+          will-change: opacity, transform, filter;
+        }
+
+        .reveal.is-visible,
+        .reveal-card.is-visible {
           opacity: 1;
-          transform: translateY(0);
+          filter: blur(0);
+          transform: translateY(0) scale(1);
+        }
+
+        .reveal-card:nth-child(2) {
+          transition-delay: 70ms;
+        }
+
+        .reveal-card:nth-child(3) {
+          transition-delay: 120ms;
+        }
+
+        .reveal-card:nth-child(4) {
+          transition-delay: 170ms;
+        }
+
+        .reveal-card:nth-child(5) {
+          transition-delay: 220ms;
+        }
+
+        .reveal-card:nth-child(6) {
+          transition-delay: 270ms;
+        }
+
+        main section {
+          position: relative;
+        }
+
+        main section::after {
+          content: "";
+          position: absolute;
+          left: 50%;
+          bottom: -1px;
+          width: min(76vw, 760px);
+          height: 1px;
+          transform: translateX(-50%);
+          pointer-events: none;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(103, 232, 249, 0.12),
+            rgba(167, 139, 250, 0.09),
+            transparent
+          );
+        }
+
+        main article {
+          transition:
+            transform 0.32s ease,
+            border-color 0.32s ease,
+            background-color 0.32s ease,
+            box-shadow 0.32s ease;
+        }
+
+        main article:hover {
+          transform: translateY(-4px);
+          box-shadow:
+            0 20px 50px rgba(0, 0, 0, 0.18),
+            0 0 40px rgba(34, 211, 238, 0.025);
+        }
+
+        main article img {
+          transition:
+            transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1),
+            filter 0.5s ease;
+        }
+
+        main article:hover img {
+          transform: scale(1.035);
+          filter: saturate(1.06) contrast(1.02);
+        }
+
+        .float-soft {
+          animation: float-soft 5.5s ease-in-out infinite;
+        }
+
+        .pulse-soft {
+          animation: pulse-soft 5s ease-in-out infinite;
+        }
+
+        .scroll-nudge {
+          animation: scroll-nudge 2.2s ease-in-out infinite;
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .reveal {
+          html {
+            scroll-behavior: auto;
+          }
+
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+
+          .reveal,
+          .reveal-card {
             opacity: 1;
+            filter: none;
             transform: none;
-            transition: none;
           }
         }
       `}</style>
 
-      <main className="flex min-h-screen flex-col overflow-hidden">
+      <main className="premium-page-bg relative isolate flex min-h-screen flex-col overflow-hidden text-white">
+        <div className="pointer-events-none fixed inset-0 -z-20">
+          <div className="premium-grid absolute inset-0 opacity-70" />
+          <div className="absolute left-[-12rem] top-[8%] h-[34rem] w-[34rem] rounded-full bg-cyan-400/[0.055] blur-[150px] [animation:aurora-drift_15s_ease-in-out_infinite]" />
+          <div className="absolute right-[-13rem] top-[22%] h-[38rem] w-[38rem] rounded-full bg-violet-500/[0.05] blur-[160px] [animation:aurora-drift_18s_ease-in-out_infinite_reverse]" />
+          <div className="absolute bottom-[-16rem] left-[38%] h-[34rem] w-[34rem] rounded-full bg-blue-500/[0.035] blur-[160px] [animation:aurora-drift_20s_ease-in-out_infinite]" />
+        </div>
+
+        <div
+          aria-hidden="true"
+          className="fixed left-0 top-0 z-[70] h-[2px] bg-gradient-to-r from-cyan-300 via-sky-400 to-violet-400 shadow-[0_0_14px_rgba(103,232,249,0.55)] transition-[width] duration-150"
+          style={{ width: `${scrollProgress}%` }}
+        />
         {/* NAVBAR */}
-        <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#070b12]/90 backdrop-blur-xl">
+        <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.08] bg-[#060a11]/72 shadow-[0_12px_40px_rgba(0,0,0,0.16)] backdrop-blur-2xl">
           <div className="mx-auto max-w-7xl px-6">
             <div className="flex items-center justify-between py-4">
               <a
@@ -618,7 +947,7 @@ export default function PortfolioClient({
                   setActiveSection("home");
                   setMobileMenuOpen(false);
                 }}
-                className="text-lg font-semibold tracking-tight text-white transition hover:text-cyan-300"
+                className="group relative text-lg font-semibold tracking-tight text-white transition hover:text-cyan-200"
               >
                 {profile?.full_name
                   ? profile.full_name.split(" ")[0] +
@@ -635,7 +964,7 @@ export default function PortfolioClient({
                     onClick={() => setActiveSection(section.key)}
                     className={
                       activeSection === section.key
-                        ? "rounded-lg bg-white/[0.06] px-4 py-2 text-cyan-300"
+                        ? "rounded-lg border border-cyan-300/15 bg-gradient-to-r from-cyan-300/[0.10] to-violet-400/[0.05] px-4 py-2 text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,0.04)]"
                         : "rounded-lg px-4 py-2 text-white/50 transition hover:bg-white/[0.04] hover:text-white"
                     }
                   >
@@ -661,7 +990,7 @@ export default function PortfolioClient({
                 className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/70 transition hover:border-cyan-300/30 hover:bg-white/[0.06] hover:text-white xl:hidden"
               >
                 <span>{mobileMenuOpen ? "Close" : "Menu"}</span>
-                <span aria-hidden="true" className="text-cyan-300">
+                <span aria-hidden="true" className="text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   {mobileMenuOpen ? "×" : "☰"}
                 </span>
               </button>
@@ -712,8 +1041,10 @@ export default function PortfolioClient({
           className="relative flex min-h-screen items-center overflow-hidden px-6 pb-20 pt-32"
         >
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute left-[-10rem] top-[15%] h-[30rem] w-[30rem] rounded-full bg-cyan-400/[0.05] blur-[150px]" />
-            <div className="absolute right-[-8rem] top-[18%] h-[30rem] w-[30rem] rounded-full bg-violet-500/[0.05] blur-[150px]" />
+            <div className="absolute left-[-11rem] top-[12%] h-[32rem] w-[32rem] rounded-full bg-cyan-400/[0.07] blur-[145px] [animation:aurora-drift_13s_ease-in-out_infinite]" />
+            <div className="absolute right-[-9rem] top-[14%] h-[33rem] w-[33rem] rounded-full bg-violet-500/[0.065] blur-[150px] [animation:aurora-drift_16s_ease-in-out_infinite_reverse]" />
+            <div className="pulse-soft absolute left-[43%] top-[24%] h-24 w-24 rounded-full border border-cyan-300/[0.08]" />
+            <div className="absolute left-[44%] top-[26%] h-2 w-2 rounded-full bg-cyan-300/35 shadow-[0_0_24px_rgba(103,232,249,0.6)]" />
           </div>
 
           <div className="relative mx-auto w-full max-w-7xl">
@@ -723,7 +1054,7 @@ export default function PortfolioClient({
                   {heroTitle}
                 </p>
 
-                <h1 className="max-w-4xl text-5xl font-bold leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl md:text-7xl lg:text-[5.1rem]">
+                <h1 className="premium-gradient-text max-w-4xl text-5xl font-bold leading-[0.98] tracking-[-0.05em] sm:text-6xl md:text-7xl lg:text-[5.1rem]">
                   {heroName}
                 </h1>
 
@@ -742,7 +1073,7 @@ export default function PortfolioClient({
                     <a
                       href="#agent"
                       onClick={() => setActiveSection("agent")}
-                      className="rounded-xl bg-cyan-300 px-6 py-3.5 font-semibold text-black transition duration-300 hover:-translate-y-1 hover:bg-cyan-200"
+                      className="shine-button rounded-xl bg-cyan-300 px-6 py-3.5 font-semibold text-black shadow-[0_12px_35px_rgba(34,211,238,0.12)] transition duration-300 hover:-translate-y-1 hover:bg-cyan-200 hover:shadow-[0_16px_45px_rgba(34,211,238,0.18)]"
                     >
                       Ask My AI ✦
                     </a>
@@ -765,7 +1096,7 @@ export default function PortfolioClient({
               </div>
 
               <div className="mx-auto w-full max-w-md lg:mx-0">
-                <div className="rounded-[1.75rem] border border-white/10 bg-[#0a1019]/90 p-7 shadow-2xl shadow-black/30">
+                <div className="premium-card rounded-[1.75rem] border border-white/10 bg-[#0a1019]/82 p-7 backdrop-blur-xl">
                   <div className="flex items-start justify-between gap-5">
                     <div>
                       <p className="text-xs uppercase tracking-[0.22em] text-cyan-300/70">
@@ -783,7 +1114,7 @@ export default function PortfolioClient({
                       )}
                     </div>
 
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06] text-cyan-300">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                       ✦
                     </div>
                   </div>
@@ -815,7 +1146,7 @@ export default function PortfolioClient({
                           Projects, skills, experience and education
                         </span>
                       </span>
-                      <span className="text-cyan-300">→</span>
+                      <span className="text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">→</span>
                     </a>
                   )}
 
@@ -837,7 +1168,7 @@ export default function PortfolioClient({
                   onClick={() => setActiveSection("agent")}
                   className="group inline-flex items-center gap-3 text-sm text-white/28 transition hover:text-white/60"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 transition group-hover:border-cyan-300/25">
+                  <span className="scroll-nudge flex h-9 w-9 items-center justify-center rounded-full border border-white/10 transition group-hover:border-cyan-300/25">
                     ↓
                   </span>
                   Start with my AI
@@ -871,7 +1202,7 @@ export default function PortfolioClient({
                   </span>
                 </div>
 
-                <h2 className="mt-6 text-4xl font-bold tracking-[-0.04em] text-white md:text-5xl lg:text-6xl">
+                <h2 className="premium-gradient-text mt-6 text-4xl font-bold tracking-[-0.045em] md:text-5xl lg:text-6xl">
                   Don&apos;t scroll. Just ask.
                 </h2>
 
@@ -882,10 +1213,10 @@ export default function PortfolioClient({
                 </p>
               </div>
 
-              <div className="mt-12 overflow-hidden rounded-[2rem] border border-white/10 bg-[#09111b]/92 shadow-2xl shadow-black/30">
+              <div className="premium-card mt-12 overflow-hidden rounded-[2rem] border border-white/10 bg-[#09111b]/86 backdrop-blur-xl">
                 <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between md:px-7">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-300">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                       ✦
                     </div>
 
@@ -928,7 +1259,7 @@ export default function PortfolioClient({
                   {loading && (
                     <div className="flex min-h-[22rem] items-center justify-center rounded-[1.6rem] border border-white/10 bg-black/20 p-6">
                       <div className="text-center">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.07] text-2xl text-cyan-300">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.07] text-2xl text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                           ✦
                         </div>
 
@@ -944,99 +1275,39 @@ export default function PortfolioClient({
                   )}
 
                   {answer && !loading && (
-                    <div className="overflow-hidden rounded-[1.6rem] border border-cyan-300/15 bg-black/20">
-                      <div className="border-b border-white/10 bg-cyan-300/[0.035] px-6 py-5 md:px-8">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-300">
-                                ✦
-                              </div>
-
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/70">
-                                  {firstName} AI
-                                </p>
-                                <p className="mt-1 text-xs text-white/30">
-                                  Answered from verified portfolio information
-                                </p>
-                              </div>
-                            </div>
-
-                            {submittedQuestion && (
-                              <div className="mt-5 rounded-xl border border-white/10 bg-black/15 px-4 py-3">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25">
-                                  Your question
-                                </p>
-                                <p className="mt-1.5 text-sm leading-6 text-white/60">
-                                  {submittedQuestion}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAnswer("");
-                              setQuestion("");
-                              setSubmittedQuestion("");
-                            }}
-                            className="shrink-0 rounded-lg border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/40 transition hover:border-cyan-300/20 hover:text-white/70"
-                          >
-                            New question
-                          </button>
+                    <div className="rounded-[1.6rem] border border-cyan-300/15 bg-black/20 p-6 md:p-8">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
+                          ✦
                         </div>
-                      </div>
 
-                      <div className="px-6 py-7 md:px-8 md:py-8">
-                        <p className="whitespace-pre-wrap text-[15px] leading-8 text-white/72 md:text-base">
-                          {answer}
-                        </p>
-
-                        <div className="mt-8 border-t border-white/10 pt-6">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/30">
-                            Go straight to the proof
-                          </p>
-
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {isSectionActuallyVisible(projectsSection) && (
-                              <a
-                                href="#projects"
-                                onClick={() => setActiveSection("projects")}
-                                className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
-                              >
-                                View Projects →
-                              </a>
-                            )}
-
-                            {isSectionActuallyVisible(experienceSection) && (
-                              <a
-                                href="#experience"
-                                onClick={() => setActiveSection("experience")}
-                                className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
-                              >
-                                View Experience →
-                              </a>
-                            )}
-
-                            {isSectionActuallyVisible(skillsSection) && (
-                              <a
-                                href="#skills"
-                                onClick={() => setActiveSection("skills")}
-                                className="rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm text-white/55 transition hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-white"
-                              >
-                                View Skills →
-                              </a>
-                            )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/70">
+                                {firstName} AI
+                              </p>
+                              <p className="mt-1 text-xs text-white/25">
+                                Answered from verified profile information
+                              </p>
+                            </div>
 
                             <button
                               type="button"
-                              onClick={downloadLatestCv}
-                              className="rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] px-4 py-2.5 text-sm font-medium text-cyan-200 transition hover:bg-cyan-300/[0.14] hover:text-white"
+                              onClick={() => {
+                                setAnswer("");
+                                setQuestion("");
+                              }}
+                              className="rounded-lg border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/40 transition hover:border-cyan-300/20 hover:text-white/70"
                             >
-                              Download CV ↓
+                              Ask something else
                             </button>
+                          </div>
+
+                          <div className="mt-6 border-l border-cyan-300/25 pl-5">
+                            <p className="whitespace-pre-wrap text-[15px] leading-8 text-white/68 md:text-base">
+                              {answer}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -1044,30 +1315,16 @@ export default function PortfolioClient({
                   )}
 
                   <div className="mt-5">
-                    <div className="mb-3 flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-medium text-white/65">
-                          {answer ? "Ask a follow-up" : "Quick questions"}
-                        </p>
-                        <p className="mt-1 text-xs text-white/28">
-                          {answer
-                            ? "Continue with another recruiter-style question."
-                            : "Start with something recruiters commonly ask."}
-                        </p>
-                      </div>
-                    </div>
-
                     <div className="grid gap-2.5 md:grid-cols-2">
                       {suggestions.length > 0 ? (
                         suggestions.map((suggestion, index) => (
                           <button
                             key={suggestion}
                             type="button"
-                            onClick={() => askAgent(suggestion)}
-                            disabled={loading}
-                            className="group flex min-h-[4.7rem] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-cyan-300/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+                            onClick={() => setQuestion(suggestion)}
+                            className="group flex min-h-[4.7rem] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-cyan-300/[0.04]"
                           >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/15 text-[10px] font-semibold text-white/30 transition group-hover:border-cyan-300/20 group-hover:text-cyan-300">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/15 text-[10px] font-semibold text-white/30 transition group-hover:border-cyan-300/20 group-hover:text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                               {String(index + 1).padStart(2, "0")}
                             </span>
 
@@ -1075,7 +1332,7 @@ export default function PortfolioClient({
                               {suggestion}
                             </span>
 
-                            <span className="ml-auto text-cyan-300/35 transition group-hover:translate-x-0.5 group-hover:text-cyan-300">
+                            <span className="ml-auto text-cyan-300/35 transition group-hover:translate-x-0.5 group-hover:text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                               →
                             </span>
                           </button>
@@ -1105,9 +1362,9 @@ export default function PortfolioClient({
 
                       <button
                         type="button"
-                        onClick={() => askAgent()}
+                        onClick={askAgent}
                         disabled={loading || !question.trim()}
-                        className="min-h-14 rounded-xl bg-cyan-300 px-7 py-3 font-semibold text-black transition hover:-translate-y-0.5 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="shine-button min-h-14 rounded-xl bg-cyan-300 px-7 py-3 font-semibold text-black shadow-[0_10px_30px_rgba(34,211,238,0.10)] transition hover:-translate-y-0.5 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {loading ? "Thinking..." : "Ask AI →"}
                       </button>
@@ -1123,7 +1380,7 @@ export default function PortfolioClient({
 
               <div className="mt-5 flex justify-center">
                 <p className="inline-flex items-center gap-2 text-xs text-white/28">
-                  <span className="text-cyan-300">✦</span>
+                  <span className="text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">✦</span>
                   Built to help recruiters and visitors find relevant proof faster.
                 </p>
               </div>
@@ -1209,11 +1466,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   {projectsLabel}
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
+                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
                   {projectsHeading}
                 </h2>
 
@@ -1229,7 +1486,7 @@ export default function PortfolioClient({
                   projects.map((project, index) => (
                     <article
                       key={project.id}
-                      className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0a1018] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-2xl hover:shadow-black/30"
+                      className="reveal-card group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0a1018] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-2xl hover:shadow-black/30"
                     >
                       <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-black/20">
                         {project.cover_image_url ? (
@@ -1303,7 +1560,7 @@ export default function PortfolioClient({
 
                         {project.highlight && (
                           <div className="mt-5 inline-flex max-w-full items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] px-3.5 py-2 text-sm font-medium text-cyan-100">
-                            <span className="text-cyan-300">✦</span>
+                            <span className="text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">✦</span>
                             <span>{project.highlight}</span>
                           </div>
                         )}
@@ -1373,11 +1630,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   Experience
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
+                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
                   Work & Internships
                 </h2>
 
@@ -1395,7 +1652,7 @@ export default function PortfolioClient({
                     {experience.map((item) => (
                       <article
                         key={item.id}
-                        className="relative md:pl-10"
+                        className="reveal-card relative md:pl-10"
                       >
                         <div className="absolute left-0 top-8 hidden h-4 w-4 rounded-full border border-cyan-300/35 bg-[#070b12] md:block">
                           <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-300" />
@@ -1462,11 +1719,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   Education
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
+                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
                   Academic Background
                 </h2>
 
@@ -1481,7 +1738,7 @@ export default function PortfolioClient({
                   {education.map((item) => (
                     <article
                       key={item.id}
-                      className="group rounded-2xl border border-white/10 bg-[#0a1019]/65 p-7 transition duration-300 hover:border-cyan-300/25"
+                      className="reveal-card group rounded-2xl border border-white/10 bg-[#0a1019]/65 p-7 transition duration-300 hover:border-cyan-300/25"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <span className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300/65">
@@ -1504,7 +1761,7 @@ export default function PortfolioClient({
                       </h3>
 
                       {item.institution && (
-                        <p className="mt-2 text-base font-medium text-cyan-300">
+                        <p className="mt-2 text-base font-medium text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                           {item.institution}
                         </p>
                       )}
@@ -1535,11 +1792,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   Highlights
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
+                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
                   Achievements
                 </h2>
 
@@ -1553,7 +1810,7 @@ export default function PortfolioClient({
                   {achievements.map((item, index) => (
                     <article
                       key={item.id}
-                      className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-7 transition duration-300 hover:border-cyan-300/25"
+                      className="reveal-card group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-7 transition duration-300 hover:border-cyan-300/25"
                     >
                       <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-cyan-300/70 via-cyan-300/15 to-transparent" />
 
@@ -1599,11 +1856,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   {skillsLabel}
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
+                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
                   {skillsHeading}
                 </h2>
 
@@ -1619,7 +1876,7 @@ export default function PortfolioClient({
                   skills.map((skill) => (
                     <article
                       key={skill.id}
-                      className="rounded-2xl border border-white/10 bg-white/[0.018] p-5 transition duration-300 hover:border-cyan-300/25 hover:bg-white/[0.035]"
+                      className="reveal-card rounded-2xl border border-white/10 bg-white/[0.018] p-5 transition duration-300 hover:border-cyan-300/25 hover:bg-white/[0.035]"
                     >
                       <div className="flex items-center gap-3">
                         <span className="h-2 w-2 rounded-full bg-cyan-300/70" />
@@ -1652,11 +1909,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   {certificationsLabel}
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
+                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
                   {certificationsHeading}
                 </h2>
 
@@ -1672,7 +1929,7 @@ export default function PortfolioClient({
                   {certifications.map((certification, index) => (
                     <article
                       key={certification.id}
-                      className="group rounded-2xl border border-white/10 bg-[#0a1019]/45 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-white/[0.025]"
+                      className="reveal-card group rounded-2xl border border-white/10 bg-[#0a1019]/45 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-white/[0.025]"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-[10px] font-semibold tracking-[0.22em] text-white/20">
@@ -1736,11 +1993,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   {aboutLabel}
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
+                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
                   {aboutHeading}
                 </h2>
               </div>
@@ -1765,7 +2022,7 @@ export default function PortfolioClient({
                 <aside className="border-t border-white/10 bg-gradient-to-br from-cyan-300/[0.045] to-transparent p-8 md:p-10 lg:border-l lg:border-t-0">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
+                      <p className="text-xs uppercase tracking-[0.22em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                         Focus
                       </p>
 
@@ -1774,7 +2031,7 @@ export default function PortfolioClient({
                       </h3>
                     </div>
 
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] text-lg text-cyan-300">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] text-lg text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                       ✦
                     </div>
                   </div>
@@ -1821,7 +2078,7 @@ export default function PortfolioClient({
 
                 <div className="grid gap-10 p-8 md:p-10 lg:grid-cols-[1fr_0.85fr] lg:p-12">
                   <div className="relative">
-                    <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+                    <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                       {contactLabel}
                     </p>
 
@@ -1836,7 +2093,7 @@ export default function PortfolioClient({
                     )}
 
                     <div className="mt-8 flex items-center gap-3 text-sm text-white/35">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] text-cyan-300">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.05] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                         ✦
                       </span>
                       <span>Open to conversations, opportunities, and collaborations.</span>
