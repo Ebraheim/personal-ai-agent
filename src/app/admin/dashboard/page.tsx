@@ -124,13 +124,22 @@ export default async function AdminDashboardPage() {
       icon: "↗",
     },
     {
-      title: "Settings",
-      subtitle: "Website Settings",
+      title: "Section Settings",
+      subtitle: "Website Layout",
       description:
-        "Control section visibility, navigation labels, ordering, and other website settings.",
+        "Control section visibility, navigation labels, ordering, and how your public website is arranged.",
       href: "/admin/sections",
-      action: "Open Settings",
+      action: "Manage Sections",
       icon: "⚙",
+    },
+    {
+      title: "Account",
+      subtitle: "Account Settings",
+      description:
+        "View your account email and website address, manage your password, and access account controls.",
+      href: "/admin/settings",
+      action: "Open Account Settings",
+      icon: "◉",
     },
   ];
 
