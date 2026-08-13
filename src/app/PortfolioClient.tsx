@@ -529,6 +529,7 @@ export default function PortfolioClient({
   const heroTagline =
     profile?.hero_tagline || "";
   const heroName = profile?.full_name || "Portfolio Owner";
+  const firstName = heroName.split(" ")[0] || "this candidate";
   const heroBio =
     profile?.bio ||
     "This portfolio is ready to be personalized from the admin dashboard.";
@@ -830,83 +831,192 @@ export default function PortfolioClient({
             id="agent"
             className="reveal relative border-t border-white/10 px-6 py-24"
           >
-            <div className="pointer-events-none absolute right-[8%] top-[12%] h-72 w-72 rounded-full bg-cyan-400/[0.04] blur-[120px]" />
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <div className="absolute left-[8%] top-[12%] h-80 w-80 rounded-full bg-cyan-400/[0.05] blur-[130px]" />
+              <div className="absolute right-[8%] bottom-[8%] h-80 w-80 rounded-full bg-violet-500/[0.04] blur-[130px]" />
+            </div>
 
             <div className="relative mx-auto max-w-6xl">
-              <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
-                  AI Assistant
-                </p>
+              <div className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-3xl">
+                  <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <span className="rounded-full border border-cyan-300/20 bg-cyan-300/[0.07] px-3 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-cyan-200">
+                      AI Portfolio Assistant
+                    </span>
 
-                <h2 className="text-4xl font-bold tracking-tight md:text-5xl">
-                  Ask about my profile.
-                </h2>
+                    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-3 py-1.5 text-xs text-white/45">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      Verified portfolio data only
+                    </span>
+                  </div>
 
-                <p className="mt-4 text-base leading-7 text-white/45 md:text-lg">
-                  Ask questions about my projects, skills, education,
-                  certifications, achievements, or experience. Answers are
-                  based on verified information from this portfolio.
-                </p>
+                  <h2 className="text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
+                    Ask {firstName}&apos;s AI.
+                  </h2>
+
+                  <p className="mt-5 max-w-2xl text-base leading-7 text-white/45 md:text-lg">
+                    Skip the scrolling. Ask about projects, skills, education,
+                    certifications, achievements, or experience and get an answer
+                    grounded in this portfolio.
+                  </p>
+                </div>
+
+                <div className="hidden shrink-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm text-white/40 lg:flex">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06] text-cyan-300">
+                    ✦
+                  </span>
+                  <span>
+                    Built to help recruiters
+                    <br />
+                    find the right proof faster.
+                  </span>
+                </div>
               </div>
 
-              <div className="grid gap-6 lg:grid-cols-[0.75fr_1.25fr]">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
-                  <p className="text-sm font-semibold text-cyan-300">
-                    Try asking
-                  </p>
+              <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#09111b]/90 shadow-2xl shadow-black/30">
+                <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 md:px-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-300">
+                      ✦
+                    </div>
 
-                  <div className="mt-5 space-y-2">
-                    {suggestions.length > 0 ? (
-                      suggestions.map((suggestion) => (
-                        <button
-                          key={suggestion}
-                          type="button"
-                          onClick={() => setQuestion(suggestion)}
-                          className="w-full rounded-xl border border-white/10 bg-black/10 p-4 text-left text-sm leading-6 text-white/45 transition hover:border-cyan-300/20 hover:bg-white/[0.04] hover:text-white/70"
-                        >
-                          {suggestion}
-                        </button>
-                      ))
-                    ) : (
-                      <p className="text-sm text-white/30">
-                        Suggested questions are loading...
+                    <div>
+                      <p className="font-semibold text-white">
+                        {firstName} AI
                       </p>
-                    )}
+                      <p className="text-xs text-white/30">
+                        Portfolio-aware assistant
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="hidden items-center gap-2 text-xs text-white/35 sm:flex">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    Ready
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-[#0a1019]/85 p-6 md:p-7">
-                  <div className="min-h-52 rounded-xl border border-white/10 bg-black/15 p-5">
-                    <p className="whitespace-pre-wrap text-sm leading-7 text-white/60">
-                      {loading
-                        ? "Thinking..."
-                        : answer ||
-                          "Ask a question and the AI assistant will answer using verified information from this portfolio."}
-                    </p>
-                  </div>
+                <div className="grid lg:grid-cols-[0.72fr_1.28fr]">
+                  <aside className="border-b border-white/10 bg-white/[0.018] p-5 md:p-6 lg:border-b-0 lg:border-r">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white">
+                          Quick questions
+                        </p>
+                        <p className="mt-1 text-xs text-white/30">
+                          Start with something recruiters commonly ask.
+                        </p>
+                      </div>
+                    </div>
 
-                  <div className="mt-4 flex flex-col gap-3 md:flex-row">
-                    <input
-                      type="text"
-                      value={question}
-                      onChange={(event) => setQuestion(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          askAgent();
-                        }
-                      }}
-                      placeholder="Ask about projects, skills, experience..."
-                      className="flex-1 rounded-xl border border-white/10 bg-white/[0.035] px-5 py-4 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/35"
-                    />
+                    <div className="mt-5 space-y-2.5">
+                      {suggestions.length > 0 ? (
+                        suggestions.map((suggestion, index) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => setQuestion(suggestion)}
+                            className="group flex w-full items-start gap-3 rounded-xl border border-white/10 bg-black/10 p-4 text-left transition hover:border-cyan-300/25 hover:bg-cyan-300/[0.04]"
+                          >
+                            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.025] text-[10px] font-medium text-white/30 transition group-hover:border-cyan-300/20 group-hover:text-cyan-300">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
 
-                    <button
-                      type="button"
-                      onClick={askAgent}
-                      disabled={loading}
-                      className="rounded-xl bg-cyan-300 px-7 py-4 font-semibold text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {loading ? "Thinking..." : "Ask AI"}
-                    </button>
+                            <span className="text-sm leading-6 text-white/48 transition group-hover:text-white/75">
+                              {suggestion}
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-white/10 p-4 text-sm text-white/30">
+                          Suggested questions are loading...
+                        </div>
+                      )}
+                    </div>
+                  </aside>
+
+                  <div className="p-5 md:p-6">
+                    <div className="flex min-h-[22rem] flex-col">
+                      <div className="flex-1 rounded-2xl border border-white/10 bg-black/20 p-5 md:p-6">
+                        {loading ? (
+                          <div className="flex h-full min-h-64 items-center justify-center">
+                            <div className="text-center">
+                              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-300">
+                                ✦
+                              </div>
+                              <p className="mt-4 text-sm text-white/45">
+                                Thinking through verified portfolio data...
+                              </p>
+                            </div>
+                          </div>
+                        ) : answer ? (
+                          <div className="flex items-start gap-4">
+                            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-300">
+                              ✦
+                            </div>
+
+                            <div className="max-w-3xl">
+                              <p className="text-xs font-medium uppercase tracking-[0.18em] text-cyan-300/70">
+                                {firstName} AI
+                              </p>
+                              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-white/65 md:text-base">
+                                {answer}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex h-full min-h-64 items-center justify-center">
+                            <div className="max-w-md text-center">
+                              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.07] text-xl text-cyan-300">
+                                ✦
+                              </div>
+
+                              <h3 className="mt-5 text-xl font-semibold text-white">
+                                What would you like to know?
+                              </h3>
+
+                              <p className="mt-3 text-sm leading-6 text-white/35">
+                                Ask a direct question about {firstName}&apos;s work,
+                                skills, experience, education, or projects.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-2">
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <input
+                            type="text"
+                            value={question}
+                            onChange={(event) => setQuestion(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                askAgent();
+                              }
+                            }}
+                            placeholder={`Ask about ${firstName}'s projects, skills, experience...`}
+                            className="min-h-14 flex-1 rounded-xl border border-transparent bg-transparent px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/25 focus:bg-black/10"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={askAgent}
+                            disabled={loading || !question.trim()}
+                            className="min-h-14 rounded-xl bg-cyan-300 px-7 py-3 font-semibold text-black transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            {loading ? "Thinking..." : "Ask AI →"}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-col gap-2 text-xs text-white/25 sm:flex-row sm:items-center sm:justify-between">
+                        <span>
+                          Answers use verified information published on this Gradfolio.
+                        </span>
+                        <span>AI can say when information is unavailable.</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
