@@ -388,10 +388,25 @@ export default function PortfolioClient({
     };
   }, []);
 
-  // Scroll reveal animation.
-  // Re-run after public Supabase data loads because many sections are rendered
-  // only after that data arrives. Without this, those later sections keep the
-  // hidden blur state forever because the observer never sees them.
+  // Signature cursor-follow spotlight.
+  useEffect(() => {
+    const root = document.documentElement;
+
+    function updatePointerGlow(event: PointerEvent) {
+      root.style.setProperty("--gradfolio-pointer-x", `${event.clientX}px`);
+      root.style.setProperty("--gradfolio-pointer-y", `${event.clientY}px`);
+    }
+
+    window.addEventListener("pointermove", updatePointerGlow, { passive: true });
+
+    return () => {
+      window.removeEventListener("pointermove", updatePointerGlow);
+    };
+  }, []);
+
+  // Repeatable scroll reveal animation.
+  // Elements reveal every time they enter the viewport and reset after they
+  // leave it, so scrolling back up/down keeps the motion alive.
   useEffect(() => {
     const elements = document.querySelectorAll(".reveal, .reveal-card");
 
@@ -400,21 +415,18 @@ export default function PortfolioClient({
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add("is-visible");
-            observer.unobserve(entry.target);
+          } else {
+            entry.target.classList.remove("is-visible");
           }
         });
       },
       {
-        threshold: 0.08,
-        rootMargin: "0px 0px -4% 0px",
+        threshold: 0.1,
+        rootMargin: "-3% 0px -8% 0px",
       }
     );
 
-    elements.forEach((element) => {
-      if (!element.classList.contains("is-visible")) {
-        observer.observe(element);
-      }
-    });
+    elements.forEach((element) => observer.observe(element));
 
     return () => {
       observer.disconnect();
@@ -560,6 +572,43 @@ export default function PortfolioClient({
       .filter((section) => isSectionActuallyVisible(section))
       .sort((a, b) => a.order - b.order),
   ].filter((section) => isSectionActuallyVisible(section));
+
+  // Keep the navigation in sync with the section currently in view.
+  // This effect must live after orderedNavigation is initialized.
+  useEffect(() => {
+    const sectionIds = [
+      "home",
+      ...orderedNavigation.map((section) => section.key),
+    ];
+
+    const sectionElements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter((element): element is HTMLElement => Boolean(element));
+
+    if (sectionElements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (visibleEntry?.target?.id) {
+          setActiveSection(visibleEntry.target.id);
+        }
+      },
+      {
+        rootMargin: "-24% 0px -58% 0px",
+        threshold: [0.01, 0.12, 0.3, 0.5],
+      }
+    );
+
+    sectionElements.forEach((element) => observer.observe(element));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [publicDataLoaded, sections, projects.length, experience.length, education.length, achievements.length, skills.length, certifications.length]);
 
   const heroTitle =
     profile?.professional_title || "Professional Portfolio";
@@ -901,6 +950,443 @@ export default function PortfolioClient({
           animation: scroll-nudge 2.2s ease-in-out infinite;
         }
 
+
+        @keyframes orbit-slow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes orbit-reverse {
+          from {
+            transform: rotate(360deg);
+          }
+          to {
+            transform: rotate(0deg);
+          }
+        }
+
+        @keyframes marquee-left {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(-50%);
+          }
+        }
+
+        @keyframes glow-breathe {
+          0%,
+          100% {
+            opacity: 0.35;
+          }
+          50% {
+            opacity: 0.7;
+          }
+        }
+
+        .pointer-spotlight {
+          background: radial-gradient(
+            460px circle at var(--gradfolio-pointer-x, 50vw)
+              var(--gradfolio-pointer-y, 35vh),
+            rgba(103, 232, 249, 0.055),
+            rgba(129, 140, 248, 0.02) 38%,
+            transparent 72%
+          );
+        }
+
+        .signature-orbit {
+          animation: orbit-slow 24s linear infinite;
+        }
+
+        .signature-orbit-reverse {
+          animation: orbit-reverse 30s linear infinite;
+        }
+
+        .signature-glow {
+          animation: glow-breathe 6s ease-in-out infinite;
+        }
+
+        .hero-marquee-track {
+          width: max-content;
+          animation: marquee-left 26s linear infinite;
+        }
+
+        .hero-marquee:hover .hero-marquee-track {
+          animation-play-state: paused;
+        }
+
+        .premium-section-kicker {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.65rem;
+        }
+
+        .premium-section-kicker::before {
+          content: "";
+          display: block;
+          width: 1.65rem;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            rgba(103, 232, 249, 0.95),
+            rgba(103, 232, 249, 0.12)
+          );
+          box-shadow: 0 0 18px rgba(103, 232, 249, 0.25);
+        }
+
+        .premium-section-title {
+          text-wrap: balance;
+        }
+
+        .premium-lift {
+          transition:
+            transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+            border-color 0.35s ease,
+            box-shadow 0.35s ease;
+        }
+
+        .premium-lift:hover {
+          transform: translateY(-5px);
+          border-color: rgba(103, 232, 249, 0.22);
+          box-shadow:
+            0 24px 65px rgba(0, 0, 0, 0.28),
+            0 0 48px rgba(34, 211, 238, 0.035);
+        }
+
+        .glass-edge {
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.04),
+            inset 1px 0 0 rgba(103, 232, 249, 0.035),
+            0 22px 70px rgba(0, 0, 0, 0.18);
+        }
+
+
+        /* ---------- V4 ART DIRECTION ---------- */
+
+        main {
+          background:
+            radial-gradient(circle at 14% 6%, rgba(34, 211, 238, 0.055), transparent 26rem),
+            radial-gradient(circle at 88% 18%, rgba(139, 92, 246, 0.055), transparent 28rem),
+            linear-gradient(135deg, #050910 0%, #07101a 42%, #090c18 72%, #070a12 100%);
+        }
+
+        main::before {
+          content: "";
+          position: fixed;
+          inset: 0;
+          z-index: -8;
+          pointer-events: none;
+          opacity: 0.32;
+          background-image:
+            radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.05) 0 0.5px, transparent 0.65px),
+            radial-gradient(circle at 70% 65%, rgba(255, 255, 255, 0.035) 0 0.5px, transparent 0.65px);
+          background-size: 22px 22px, 31px 31px;
+          mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.65), transparent 92%);
+        }
+
+        section {
+          isolation: isolate;
+        }
+
+        section[id] {
+          background-color: transparent;
+          background-repeat: no-repeat;
+          background-size: 100% 100%;
+        }
+
+        #agent {
+          background-image:
+            radial-gradient(circle at 6% 22%, rgba(34, 211, 238, 0.075), transparent 30rem),
+            radial-gradient(circle at 91% 18%, rgba(129, 140, 248, 0.075), transparent 31rem);
+        }
+
+        #projects {
+          background-image:
+            radial-gradient(circle at 9% 20%, rgba(14, 165, 233, 0.07), transparent 29rem),
+            radial-gradient(circle at 88% 78%, rgba(139, 92, 246, 0.07), transparent 32rem);
+        }
+
+        #experience {
+          background-image:
+            radial-gradient(circle at 13% 44%, rgba(45, 212, 191, 0.06), transparent 28rem),
+            radial-gradient(circle at 92% 18%, rgba(59, 130, 246, 0.045), transparent 28rem);
+        }
+
+        #education {
+          background-image:
+            radial-gradient(circle at 82% 20%, rgba(99, 102, 241, 0.065), transparent 30rem),
+            radial-gradient(circle at 5% 82%, rgba(34, 211, 238, 0.045), transparent 26rem);
+        }
+
+        #achievements {
+          background-image:
+            radial-gradient(circle at 90% 35%, rgba(168, 85, 247, 0.065), transparent 28rem),
+            radial-gradient(circle at 8% 78%, rgba(34, 211, 238, 0.04), transparent 28rem);
+        }
+
+        #skills {
+          background-image:
+            radial-gradient(circle at 12% 18%, rgba(34, 211, 238, 0.065), transparent 30rem),
+            radial-gradient(circle at 86% 82%, rgba(99, 102, 241, 0.05), transparent 30rem);
+        }
+
+        #certifications {
+          background-image:
+            radial-gradient(circle at 88% 18%, rgba(59, 130, 246, 0.06), transparent 30rem),
+            radial-gradient(circle at 15% 88%, rgba(139, 92, 246, 0.045), transparent 28rem);
+        }
+
+        #about {
+          background-image:
+            radial-gradient(circle at 12% 24%, rgba(45, 212, 191, 0.055), transparent 28rem),
+            radial-gradient(circle at 88% 72%, rgba(129, 140, 248, 0.05), transparent 30rem);
+        }
+
+        #contact {
+          background-image:
+            radial-gradient(circle at 86% 24%, rgba(139, 92, 246, 0.06), transparent 30rem),
+            radial-gradient(circle at 10% 74%, rgba(34, 211, 238, 0.05), transparent 28rem);
+        }
+
+        section[id]::before {
+          position: absolute;
+          z-index: -1;
+          top: clamp(4rem, 10vw, 8rem);
+          right: clamp(1.5rem, 6vw, 7rem);
+          font-size: clamp(6rem, 14vw, 12rem);
+          font-weight: 900;
+          line-height: 0.8;
+          letter-spacing: -0.08em;
+          color: rgba(255, 255, 255, 0.018);
+          pointer-events: none;
+          user-select: none;
+        }
+
+        #agent::before {
+          content: "AI";
+        }
+
+        #projects::before {
+          content: "01";
+        }
+
+        #experience::before {
+          content: "02";
+        }
+
+        #education::before {
+          content: "03";
+        }
+
+        #achievements::before {
+          content: "04";
+        }
+
+        #skills::before {
+          content: "05";
+        }
+
+        #certifications::before {
+          content: "06";
+        }
+
+        #about::before {
+          content: "07";
+        }
+
+        #contact::before {
+          content: "08";
+        }
+
+        .premium-section-kicker {
+          letter-spacing: 0.34em !important;
+          font-size: 0.72rem !important;
+          font-weight: 700;
+          text-shadow: 0 0 26px rgba(103, 232, 249, 0.22);
+        }
+
+        .premium-section-title {
+          position: relative;
+          display: inline-block;
+          max-width: 100%;
+          background:
+            linear-gradient(
+              108deg,
+              rgba(255,255,255,1) 0%,
+              rgba(255,255,255,1) 52%,
+              rgba(165,243,252,0.96) 72%,
+              rgba(196,181,253,0.92) 100%
+            );
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent !important;
+        }
+
+        .premium-section-title::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          bottom: -0.6rem;
+          width: min(5rem, 28%);
+          height: 2px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, #67e8f9, #818cf8, transparent);
+          box-shadow: 0 0 22px rgba(103, 232, 249, 0.35);
+          transform-origin: left;
+          transform: scaleX(0.38);
+          transition: transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        section.is-visible .premium-section-title::after {
+          transform: scaleX(1);
+        }
+
+        main article,
+        .premium-card,
+        .glass-edge {
+          border-color: rgba(255, 255, 255, 0.085);
+          background-image:
+            linear-gradient(
+              145deg,
+              rgba(255,255,255,0.028),
+              transparent 38%,
+              rgba(103,232,249,0.014) 72%,
+              rgba(139,92,246,0.018)
+            );
+          backdrop-filter: blur(18px);
+        }
+
+        main article::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          pointer-events: none;
+          opacity: 0;
+          background:
+            radial-gradient(
+              320px circle at 50% 0%,
+              rgba(103, 232, 249, 0.06),
+              transparent 70%
+            );
+          transition: opacity 0.35s ease;
+        }
+
+        main article:hover::after {
+          opacity: 1;
+        }
+
+        .reveal-card:nth-child(odd) {
+          transform: translate3d(-22px, 32px, 0) scale(0.988);
+        }
+
+        .reveal-card:nth-child(even) {
+          transform: translate3d(22px, 32px, 0) scale(0.988);
+        }
+
+        .reveal-card.is-visible {
+          transform: translate3d(0, 0, 0) scale(1);
+        }
+
+        #experience article:nth-child(odd),
+        #education article:nth-child(odd),
+        #achievements article:nth-child(odd),
+        #skills article:nth-child(odd),
+        #certifications article:nth-child(odd) {
+          background-color: rgba(7, 14, 23, 0.68);
+        }
+
+        #experience article:nth-child(even),
+        #education article:nth-child(even),
+        #achievements article:nth-child(even),
+        #skills article:nth-child(even),
+        #certifications article:nth-child(even) {
+          background-color: rgba(9, 12, 24, 0.68);
+        }
+
+        #skills article,
+        #certifications article {
+          overflow: hidden;
+        }
+
+        #skills article::before,
+        #certifications article::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(103, 232, 249, 0.35),
+            rgba(129, 140, 248, 0.18),
+            transparent
+          );
+          transform: scaleX(0.18);
+          opacity: 0.35;
+          transition:
+            transform 0.5s ease,
+            opacity 0.5s ease;
+        }
+
+        #skills article:hover::before,
+        #certifications article:hover::before {
+          transform: scaleX(1);
+          opacity: 1;
+        }
+
+        #about .premium-card,
+        #contact .premium-card {
+          background:
+            linear-gradient(
+              135deg,
+              rgba(8, 17, 28, 0.9),
+              rgba(10, 13, 25, 0.84)
+            );
+        }
+
+        #contact a,
+        #contact button {
+          transition:
+            transform 0.28s ease,
+            background-color 0.28s ease,
+            border-color 0.28s ease,
+            box-shadow 0.28s ease;
+        }
+
+        #contact a:hover,
+        #contact button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+        }
+
+        header nav a {
+          position: relative;
+        }
+
+        header nav a::after {
+          content: "";
+          position: absolute;
+          left: 50%;
+          bottom: 0.35rem;
+          width: 0;
+          height: 1px;
+          transform: translateX(-50%);
+          background: linear-gradient(90deg, #67e8f9, #818cf8);
+          box-shadow: 0 0 12px rgba(103,232,249,0.28);
+          transition: width 0.28s ease;
+        }
+
+        header nav a:hover::after {
+          width: 42%;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           html {
             scroll-behavior: auto;
@@ -924,7 +1410,7 @@ export default function PortfolioClient({
         }
       `}</style>
 
-      <main className="premium-page-bg relative isolate flex min-h-screen flex-col overflow-hidden text-white">
+      <main className="premium-page-bg relative isolate flex min-h-screen flex-col overflow-hidden bg-[#050910] text-white">
         <div className="pointer-events-none fixed inset-0 -z-20">
           <div className="premium-grid absolute inset-0 opacity-70" />
           <div className="absolute left-[-12rem] top-[8%] h-[34rem] w-[34rem] rounded-full bg-cyan-400/[0.055] blur-[150px] [animation:aurora-drift_15s_ease-in-out_infinite]" />
@@ -937,6 +1423,26 @@ export default function PortfolioClient({
           className="fixed left-0 top-0 z-[70] h-[2px] bg-gradient-to-r from-cyan-300 via-sky-400 to-violet-400 shadow-[0_0_14px_rgba(103,232,249,0.55)] transition-[width] duration-150"
           style={{ width: `${scrollProgress}%` }}
         />
+
+        <div
+          aria-hidden="true"
+          className="pointer-spotlight pointer-events-none fixed inset-0 z-[-5] hidden lg:block"
+        />
+
+        <div className="fixed bottom-8 left-6 z-40 hidden 2xl:flex 2xl:flex-col 2xl:items-center 2xl:gap-3">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.26em] text-white/20 [writing-mode:vertical-rl]">
+            Explore
+          </span>
+          <div className="h-24 w-px overflow-hidden bg-white/[0.08]">
+            <div
+              className="w-full bg-gradient-to-b from-cyan-300 to-violet-400 transition-[height] duration-200"
+              style={{ height: `${scrollProgress}%` }}
+            />
+          </div>
+          <span className="text-[10px] font-semibold tabular-nums text-cyan-200/55">
+            {String(Math.round(scrollProgress)).padStart(2, "0")}
+          </span>
+        </div>
         {/* NAVBAR */}
         <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.08] bg-[#060a11]/72 shadow-[0_12px_40px_rgba(0,0,0,0.16)] backdrop-blur-2xl">
           <div className="mx-auto max-w-7xl px-6">
@@ -1037,38 +1543,46 @@ export default function PortfolioClient({
         {/* HERO */}
         <section
           id="home"
-          style={{ order: 0 }}
-          className="relative flex min-h-screen items-center overflow-hidden px-6 pb-20 pt-32"
+          style={{ order: 0, scrollMarginTop: "4.75rem" }}
+          className="relative flex min-h-[calc(100svh-4.75rem)] items-center overflow-hidden px-6 pb-10 pt-24 lg:pb-12 lg:pt-24"
         >
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute left-[-11rem] top-[12%] h-[32rem] w-[32rem] rounded-full bg-cyan-400/[0.07] blur-[145px] [animation:aurora-drift_13s_ease-in-out_infinite]" />
-            <div className="absolute right-[-9rem] top-[14%] h-[33rem] w-[33rem] rounded-full bg-violet-500/[0.065] blur-[150px] [animation:aurora-drift_16s_ease-in-out_infinite_reverse]" />
-            <div className="pulse-soft absolute left-[43%] top-[24%] h-24 w-24 rounded-full border border-cyan-300/[0.08]" />
-            <div className="absolute left-[44%] top-[26%] h-2 w-2 rounded-full bg-cyan-300/35 shadow-[0_0_24px_rgba(103,232,249,0.6)]" />
+            <div className="absolute left-[-11rem] top-[12%] h-[32rem] w-[32rem] rounded-full bg-cyan-400/[0.08] blur-[145px] [animation:aurora-drift_13s_ease-in-out_infinite]" />
+            <div className="absolute right-[-9rem] top-[14%] h-[33rem] w-[33rem] rounded-full bg-violet-500/[0.075] blur-[150px] [animation:aurora-drift_16s_ease-in-out_infinite_reverse]" />
+
+            <div className="signature-glow absolute left-[39%] top-[18%] hidden h-[20rem] w-[20rem] lg:block">
+              <div className="signature-orbit absolute inset-0 rounded-full border border-cyan-300/[0.08]">
+                <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-cyan-300/50 shadow-[0_0_26px_rgba(103,232,249,0.7)]" />
+              </div>
+              <div className="signature-orbit-reverse absolute inset-10 rounded-full border border-violet-300/[0.08]">
+                <span className="absolute bottom-2 right-4 h-2.5 w-2.5 rounded-full bg-violet-300/45 shadow-[0_0_24px_rgba(196,181,253,0.6)]" />
+              </div>
+              <div className="absolute inset-[5.6rem] rounded-full border border-white/[0.05] bg-white/[0.012] backdrop-blur-sm" />
+            </div>
           </div>
 
           <div className="relative mx-auto w-full max-w-7xl">
-            <div className="grid items-center gap-14 lg:grid-cols-[1.25fr_0.75fr] lg:gap-20">
+            <div className="grid items-center gap-10 lg:grid-cols-[1.22fr_0.78fr] lg:gap-14">
               <div>
                 <p className="mb-5 text-sm font-medium uppercase tracking-[0.24em] text-cyan-300/75">
                   {heroTitle}
                 </p>
 
-                <h1 className="premium-gradient-text max-w-4xl text-5xl font-bold leading-[0.98] tracking-[-0.05em] sm:text-6xl md:text-7xl lg:text-[5.1rem]">
+                <h1 className="premium-gradient-text max-w-4xl text-5xl font-black leading-[0.94] tracking-[-0.058em] sm:text-6xl md:text-7xl lg:text-[4.85rem]">
                   {heroName}
                 </h1>
 
                 {heroTagline && (
-                  <p className="mt-6 max-w-3xl text-base font-medium text-cyan-100/75 md:text-lg">
+                  <p className="mt-5 max-w-3xl text-base font-medium tracking-[-0.01em] text-cyan-100/72 md:text-lg">
                     {heroTagline}
                   </p>
                 )}
 
-                <p className="mt-5 max-w-2xl text-sm leading-7 text-white/48 md:text-base">
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-white/48 md:text-base">
                   {heroBio}
                 </p>
 
-                <div className="mt-9 flex flex-wrap gap-3">
+                <div className="mt-7 flex flex-wrap gap-3">
                   {agentSection.visible && (
                     <a
                       href="#agent"
@@ -1090,13 +1604,13 @@ export default function PortfolioClient({
                   )}
                 </div>
 
-                <p className="mt-7 text-sm text-white/28">
+                <p className="mt-5 text-sm text-white/28">
                   Ask first, or browse the portfolio normally.
                 </p>
               </div>
 
               <div className="mx-auto w-full max-w-md lg:mx-0">
-                <div className="premium-card rounded-[1.75rem] border border-white/10 bg-[#0a1019]/82 p-7 backdrop-blur-xl">
+                <div className="premium-card glass-edge premium-lift rounded-[1.65rem] border border-white/10 bg-[#09111a]/74 p-6 backdrop-blur-2xl">
                   <div className="flex items-start justify-between gap-5">
                     <div>
                       <p className="text-xs uppercase tracking-[0.22em] text-cyan-300/70">
@@ -1112,6 +1626,11 @@ export default function PortfolioClient({
                           {profile.location}
                         </p>
                       )}
+
+                      <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-3 py-1.5 text-[11px] text-white/35">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.55)]" />
+                        AI-ready verified profile
+                      </div>
                     </div>
 
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
@@ -1162,7 +1681,7 @@ export default function PortfolioClient({
             </div>
 
             {agentSection.visible && (
-              <div className="mt-14">
+              <div className="mt-8">
                 <a
                   href="#agent"
                   onClick={() => setActiveSection("agent")}
@@ -1178,11 +1697,43 @@ export default function PortfolioClient({
           </div>
         </section>
 
+        <div className="hero-marquee relative overflow-hidden border-y border-white/[0.07] bg-gradient-to-r from-cyan-300/[0.018] via-white/[0.012] to-violet-400/[0.018] py-3 backdrop-blur-sm">
+          <div className="hero-marquee-track flex items-center gap-8 pr-8 text-[10px] font-semibold uppercase tracking-[0.28em] text-white/30">
+            {[
+              "AI-powered portfolio",
+              "Verified data",
+              "Projects",
+              "Experience",
+              "Skills",
+              "Education",
+              "Ask before you scroll",
+              "Built with Gradfolio",
+              "AI-powered portfolio",
+              "Verified data",
+              "Projects",
+              "Experience",
+              "Skills",
+              "Education",
+              "Ask before you scroll",
+              "Built with Gradfolio",
+            ].map((item, index) => (
+              <span
+                key={`${item}-${index}`}
+                className="inline-flex shrink-0 items-center gap-3"
+              >
+                <span className="h-1 w-1 rounded-full bg-cyan-300/70" />
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* AI AGENT */}
         {agentSection.visible && (
           <section
             id="agent"
-            className="reveal relative border-t border-white/10 px-6 py-24"
+            style={{ scrollMarginTop: "4.75rem" }}
+            className="reveal relative border-t border-white/10 px-6 py-16 lg:py-18"
           >
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
               <div className="absolute left-[-8rem] top-20 h-[28rem] w-[28rem] rounded-full bg-cyan-400/[0.055] blur-[140px]" />
@@ -1202,11 +1753,11 @@ export default function PortfolioClient({
                   </span>
                 </div>
 
-                <h2 className="premium-gradient-text mt-6 text-4xl font-bold tracking-[-0.045em] md:text-5xl lg:text-6xl">
+                <h2 className="premium-gradient-text mt-5 text-4xl font-black tracking-[-0.055em] md:text-5xl lg:text-[3.55rem]">
                   Don&apos;t scroll. Just ask.
                 </h2>
 
-                <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-white/45 md:text-lg">
+                <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-white/45 md:text-lg">
                   Ask what matters about {firstName}&apos;s work, skills, experience,
                   education, projects, or achievements. The assistant answers from
                   information published on this Gradfolio.
@@ -1234,22 +1785,22 @@ export default function PortfolioClient({
                   </div>
                 </div>
 
-                <div className="p-5 md:p-7">
+                <div className="p-4 md:p-5">
                   {!answer && !loading && (
-                    <div className="rounded-[1.6rem] border border-white/10 bg-black/20 px-6 py-10 text-center md:px-10 md:py-12">
-                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.07] text-2xl text-cyan-300 shadow-lg shadow-cyan-950/20">
+                    <div className="rounded-[1.4rem] border border-white/10 bg-black/20 px-6 py-7 text-center md:px-8 md:py-8">
+                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] text-xl text-cyan-300 shadow-lg shadow-cyan-950/20">
                         ✦
                       </div>
 
-                      <p className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/65">
+                      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/65">
                         Ask for the proof you need
                       </p>
 
-                      <h3 className="mx-auto mt-3 max-w-xl text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                      <h3 className="mx-auto mt-2 max-w-xl text-xl font-semibold tracking-tight text-white md:text-2xl">
                         What would you like to know about {firstName}?
                       </h3>
 
-                      <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/35">
+                      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-white/35">
                         Choose a question below or ask your own. You do not need to
                         read the whole portfolio first.
                       </p>
@@ -1314,7 +1865,7 @@ export default function PortfolioClient({
                     </div>
                   )}
 
-                  <div className="mt-5">
+                  <div className="mt-4">
                     <div className="grid gap-2.5 md:grid-cols-2">
                       {suggestions.length > 0 ? (
                         suggestions.map((suggestion, index) => (
@@ -1322,7 +1873,7 @@ export default function PortfolioClient({
                             key={suggestion}
                             type="button"
                             onClick={() => setQuestion(suggestion)}
-                            className="group flex min-h-[4.7rem] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-cyan-300/[0.04]"
+                            className="group flex min-h-[3.9rem] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-2.5 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-cyan-300/[0.04]"
                           >
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/15 text-[10px] font-semibold text-white/30 transition group-hover:border-cyan-300/20 group-hover:text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                               {String(index + 1).padStart(2, "0")}
@@ -1357,14 +1908,14 @@ export default function PortfolioClient({
                           }
                         }}
                         placeholder={`Ask anything about ${firstName}'s profile...`}
-                        className="min-h-14 flex-1 rounded-xl border border-transparent bg-transparent px-4 py-3 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/25 focus:bg-black/10"
+                        className="min-h-12 flex-1 rounded-xl border border-transparent bg-transparent px-4 py-2.5 text-white outline-none transition placeholder:text-white/25 focus:border-cyan-300/25 focus:bg-black/10"
                       />
 
                       <button
                         type="button"
                         onClick={askAgent}
                         disabled={loading || !question.trim()}
-                        className="shine-button min-h-14 rounded-xl bg-cyan-300 px-7 py-3 font-semibold text-black shadow-[0_10px_30px_rgba(34,211,238,0.10)] transition hover:-translate-y-0.5 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="shine-button min-h-12 rounded-xl bg-cyan-300 px-6 py-2.5 font-semibold text-black shadow-[0_10px_30px_rgba(34,211,238,0.10)] transition hover:-translate-y-0.5 hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {loading ? "Thinking..." : "Ask AI →"}
                       </button>
@@ -1392,7 +1943,7 @@ export default function PortfolioClient({
         {agentSection.visible && (
           <section
             aria-label="Portfolio shortcuts"
-            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-8"
+            className="reveal border-t border-white/10 bg-gradient-to-r from-cyan-300/[0.018] via-white/[0.012] to-violet-400/[0.018] px-6 py-8 backdrop-blur-sm"
           >
             <div className="mx-auto flex max-w-6xl flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -1462,31 +2013,49 @@ export default function PortfolioClient({
           <section
             id="projects"
             style={{ order: projectsSection.order }}
-            className="reveal border-t border-white/10 bg-white/[0.015] px-6 py-20"
+            className="reveal relative border-t border-white/10 bg-white/[0.012] px-6 py-24"
           >
-            <div className="mx-auto max-w-6xl">
-              <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
-                  {projectsLabel}
-                </p>
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <div className="absolute left-[-10rem] top-[8%] h-[32rem] w-[32rem] rounded-full bg-cyan-400/[0.045] blur-[150px] [animation:aurora-drift_17s_ease-in-out_infinite]" />
+              <div className="absolute right-[-8rem] bottom-[4%] h-[34rem] w-[34rem] rounded-full bg-violet-500/[0.04] blur-[160px] [animation:aurora-drift_20s_ease-in-out_infinite_reverse]" />
+            </div>
 
-                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
-                  {projectsHeading}
-                </h2>
-
-                {projectsDescription && (
-                  <p className="mt-4 text-base leading-7 text-white/45 md:text-lg">
-                    {projectsDescription}
+            <div className="relative mx-auto max-w-6xl">
+              <div className="mb-12 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-3xl">
+                  <p className="premium-section-kicker mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
+                    {projectsLabel}
                   </p>
-                )}
+
+                  <h2 className="premium-section-title text-4xl font-bold tracking-[-0.04em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.04)] md:text-5xl">
+                    {projectsHeading}
+                  </h2>
+
+                  {projectsDescription && (
+                    <p className="mt-4 max-w-2xl text-base leading-7 text-white/45 md:text-lg">
+                      {projectsDescription}
+                    </p>
+                  )}
+                </div>
+
+                <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm text-white/35 lg:flex">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06] text-cyan-300">
+                    ↗
+                  </span>
+                  <span>
+                    Selected work with
+                    <br />
+                    real outcomes and proof.
+                  </span>
+                </div>
               </div>
 
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-6 md:grid-cols-2">
                 {publicDataLoaded && projects.length > 0 ? (
                   projects.map((project, index) => (
                     <article
                       key={project.id}
-                      className="reveal-card group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0a1018] transition duration-300 hover:-translate-y-1 hover:border-cyan-300/25 hover:shadow-2xl hover:shadow-black/30"
+                      className="premium-lift reveal-card premium-card group relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0a1018]/88 backdrop-blur-xl"
                     >
                       <div className="relative aspect-[16/9] overflow-hidden border-b border-white/10 bg-black/20">
                         {project.cover_image_url ? (
@@ -1494,16 +2063,22 @@ export default function PortfolioClient({
                             <img
                               src={project.cover_image_url}
                               alt={`${project.title} project cover`}
-                              className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                              className="h-full w-full object-cover"
                             />
-                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#071019]/90 via-black/10 to-transparent opacity-80 transition duration-500 group-hover:opacity-55" />
+
+                            <div className="pointer-events-none absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100">
+                              <div className="absolute -left-20 top-1/4 h-40 w-40 rounded-full bg-cyan-300/[0.12] blur-3xl" />
+                              <div className="absolute -right-16 bottom-0 h-44 w-44 rounded-full bg-violet-400/[0.10] blur-3xl" />
+                            </div>
                           </>
                         ) : (
                           <div className="relative flex h-full w-full items-end overflow-hidden bg-[radial-gradient(circle_at_18%_20%,rgba(34,211,238,0.16),transparent_26%),radial-gradient(circle_at_82%_70%,rgba(99,102,241,0.15),transparent_32%),linear-gradient(135deg,#07111a_0%,#0a1018_48%,#0e1020_100%)] p-6 md:p-7">
-                            <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full border border-cyan-300/10" />
-                            <div className="pointer-events-none absolute right-7 top-7 h-20 w-20 rounded-full border border-white/[0.06]" />
-                            <div className="pointer-events-none absolute bottom-5 left-5 h-px w-24 bg-cyan-300/30" />
-                            <div className="pointer-events-none absolute left-6 top-16 text-[6.5rem] font-black leading-none tracking-[-0.08em] text-white/[0.035] md:text-[8rem]">
+                            <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full border border-cyan-300/10 transition duration-700 group-hover:scale-125 group-hover:border-cyan-300/20" />
+                            <div className="pointer-events-none absolute right-7 top-7 h-20 w-20 rounded-full border border-white/[0.06] transition duration-700 group-hover:translate-x-2 group-hover:-translate-y-2" />
+                            <div className="pointer-events-none absolute bottom-5 left-5 h-px w-24 bg-cyan-300/30 transition-all duration-500 group-hover:w-40" />
+                            <div className="pointer-events-none absolute left-6 top-16 text-[6.5rem] font-black leading-none tracking-[-0.08em] text-white/[0.035] transition duration-500 group-hover:text-white/[0.06] md:text-[8rem]">
                               {String(index + 1).padStart(2, "0")}
                             </div>
 
@@ -1512,8 +2087,8 @@ export default function PortfolioClient({
                                 Project Preview
                               </p>
 
-                              <div className="h-10 w-10 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] p-2.5">
-                                <div className="h-full w-full rounded-full border border-cyan-300/50" />
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-300 transition duration-300 group-hover:-translate-y-1 group-hover:rotate-6">
+                                ✦
                               </div>
 
                               {project.technologies && (
@@ -1537,18 +2112,31 @@ export default function PortfolioClient({
                           </div>
                         )}
 
-                        <span className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/65 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
+                        <div className="absolute inset-x-0 top-0 flex items-start justify-between p-4">
+                          <span className="rounded-full border border-white/10 bg-black/60 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur-md">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
 
-                        <span className="absolute right-4 top-4 rounded-full border border-cyan-300/20 bg-[#071019]/85 px-3 py-1.5 text-xs capitalize text-cyan-200 backdrop-blur">
-                          {project.status.replaceAll("-", " ")}
-                        </span>
+                          <span className="rounded-full border border-cyan-300/20 bg-[#071019]/80 px-3 py-1.5 text-xs capitalize text-cyan-200 backdrop-blur-md">
+                            {project.status.replaceAll("-", " ")}
+                          </span>
+                        </div>
+
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex translate-y-3 items-center justify-between px-5 pb-5 opacity-0 transition duration-400 group-hover:translate-y-0 group-hover:opacity-100">
+                          <span className="rounded-full border border-white/10 bg-black/45 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-white/65 backdrop-blur">
+                            Explore project
+                          </span>
+
+                          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.10] text-cyan-200 backdrop-blur">
+                            ↗
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="p-7 md:p-8">
+                      <div className="relative p-7 md:p-8">
+                        <div className="pointer-events-none absolute left-0 top-0 h-px w-0 bg-gradient-to-r from-cyan-300/80 to-violet-400/50 transition-all duration-500 group-hover:w-full" />
 
-                        <h3 className="text-2xl font-semibold tracking-tight text-white">
+                        <h3 className="text-2xl font-semibold tracking-tight text-white transition duration-300 group-hover:text-cyan-100">
                           {project.title}
                         </h3>
 
@@ -1559,8 +2147,8 @@ export default function PortfolioClient({
                         </p>
 
                         {project.highlight && (
-                          <div className="mt-5 inline-flex max-w-full items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] px-3.5 py-2 text-sm font-medium text-cyan-100">
-                            <span className="text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">✦</span>
+                          <div className="mt-5 inline-flex max-w-full items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] px-3.5 py-2 text-sm font-medium text-cyan-100 transition duration-300 group-hover:border-cyan-300/30 group-hover:bg-cyan-300/[0.10]">
+                            <span className="text-cyan-300">✦</span>
                             <span>{project.highlight}</span>
                           </div>
                         )}
@@ -1575,7 +2163,7 @@ export default function PortfolioClient({
                               .map((item) => (
                                 <span
                                   key={item}
-                                  className="rounded-lg border border-white/10 bg-white/[0.025] px-3 py-1.5 text-xs text-white/45"
+                                  className="rounded-lg border border-white/10 bg-white/[0.025] px-3 py-1.5 text-xs text-white/45 transition duration-300 group-hover:border-white/[0.14] group-hover:text-white/55"
                                 >
                                   {item}
                                 </span>
@@ -1590,7 +2178,7 @@ export default function PortfolioClient({
                                 href={project.project_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-cyan-200"
+                                className="shine-button inline-flex items-center gap-2 rounded-xl bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-black shadow-[0_10px_30px_rgba(34,211,238,0.10)] transition hover:-translate-y-0.5 hover:bg-cyan-200"
                               >
                                 View Project ↗
                               </a>
@@ -1601,7 +2189,7 @@ export default function PortfolioClient({
                                 href={project.github_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm font-medium text-white/65 transition hover:border-cyan-300/25 hover:text-white"
+                                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-2.5 text-sm font-medium text-white/65 transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:text-white"
                               >
                                 GitHub ↗
                               </a>
@@ -1630,11 +2218,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
+                <p className="premium-section-kicker mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   Experience
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
+                <h2 className="premium-section-title text-4xl font-bold tracking-[-0.04em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.04)] md:text-5xl">
                   Work & Internships
                 </h2>
 
@@ -1652,7 +2240,7 @@ export default function PortfolioClient({
                     {experience.map((item) => (
                       <article
                         key={item.id}
-                        className="reveal-card relative md:pl-10"
+                        className="premium-lift reveal-card relative md:pl-10"
                       >
                         <div className="absolute left-0 top-8 hidden h-4 w-4 rounded-full border border-cyan-300/35 bg-[#070b12] md:block">
                           <div className="absolute left-1/2 top-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-300" />
@@ -1719,11 +2307,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
+                <p className="premium-section-kicker mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   Education
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
+                <h2 className="premium-section-title text-4xl font-bold tracking-[-0.04em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.04)] md:text-5xl">
                   Academic Background
                 </h2>
 
@@ -1738,7 +2326,7 @@ export default function PortfolioClient({
                   {education.map((item) => (
                     <article
                       key={item.id}
-                      className="reveal-card group rounded-2xl border border-white/10 bg-[#0a1019]/65 p-7 transition duration-300 hover:border-cyan-300/25"
+                      className="premium-lift reveal-card group rounded-2xl border border-white/10 bg-[#0a1019]/65 p-7 transition duration-300 hover:border-cyan-300/25"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <span className="text-xs font-medium uppercase tracking-[0.2em] text-cyan-300/65">
@@ -1792,11 +2380,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
+                <p className="premium-section-kicker mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   Highlights
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
+                <h2 className="premium-section-title text-4xl font-bold tracking-[-0.04em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.04)] md:text-5xl">
                   Achievements
                 </h2>
 
@@ -1810,7 +2398,7 @@ export default function PortfolioClient({
                   {achievements.map((item, index) => (
                     <article
                       key={item.id}
-                      className="reveal-card group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-7 transition duration-300 hover:border-cyan-300/25"
+                      className="premium-lift reveal-card group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-7 transition duration-300 hover:border-cyan-300/25"
                     >
                       <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-cyan-300/70 via-cyan-300/15 to-transparent" />
 
@@ -1856,11 +2444,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
+                <p className="premium-section-kicker mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   {skillsLabel}
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
+                <h2 className="premium-section-title text-4xl font-bold tracking-[-0.04em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.04)] md:text-5xl">
                   {skillsHeading}
                 </h2>
 
@@ -1876,7 +2464,7 @@ export default function PortfolioClient({
                   skills.map((skill) => (
                     <article
                       key={skill.id}
-                      className="reveal-card rounded-2xl border border-white/10 bg-white/[0.018] p-5 transition duration-300 hover:border-cyan-300/25 hover:bg-white/[0.035]"
+                      className="premium-lift reveal-card rounded-2xl border border-white/10 bg-white/[0.018] p-5 transition duration-300 hover:border-cyan-300/25 hover:bg-white/[0.035]"
                     >
                       <div className="flex items-center gap-3">
                         <span className="h-2 w-2 rounded-full bg-cyan-300/70" />
@@ -1909,11 +2497,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
+                <p className="premium-section-kicker mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   {certificationsLabel}
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
+                <h2 className="premium-section-title text-4xl font-bold tracking-[-0.04em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.04)] md:text-5xl">
                   {certificationsHeading}
                 </h2>
 
@@ -1929,7 +2517,7 @@ export default function PortfolioClient({
                   {certifications.map((certification, index) => (
                     <article
                       key={certification.id}
-                      className="reveal-card group rounded-2xl border border-white/10 bg-[#0a1019]/45 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-white/[0.025]"
+                      className="premium-lift reveal-card group rounded-2xl border border-white/10 bg-[#0a1019]/45 p-5 transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-white/[0.025]"
                     >
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-[10px] font-semibold tracking-[0.22em] text-white/20">
@@ -1993,11 +2581,11 @@ export default function PortfolioClient({
           >
             <div className="mx-auto max-w-6xl">
               <div className="mb-12 max-w-3xl">
-                <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
+                <p className="premium-section-kicker mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                   {aboutLabel}
                 </p>
 
-                <h2 className="text-4xl font-bold tracking-[-0.035em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.035)] md:text-5xl">
+                <h2 className="premium-section-title text-4xl font-bold tracking-[-0.04em] text-white drop-shadow-[0_0_30px_rgba(103,232,249,0.04)] md:text-5xl">
                   {aboutHeading}
                 </h2>
               </div>
@@ -2078,7 +2666,7 @@ export default function PortfolioClient({
 
                 <div className="grid gap-10 p-8 md:p-10 lg:grid-cols-[1fr_0.85fr] lg:p-12">
                   <div className="relative">
-                    <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
+                    <p className="premium-section-kicker mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300 drop-shadow-[0_0_18px_rgba(103,232,249,0.12)]">
                       {contactLabel}
                     </p>
 
