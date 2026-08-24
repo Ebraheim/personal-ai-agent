@@ -2737,6 +2737,51 @@ export default function PortfolioClient({
                         <span>↓</span>
                       </button>
                     </div>
+
+                    <form
+                      action="https://formspree.io/f/mvkpjgze"
+                      method="POST"
+                      className="mt-6 space-y-3"
+                    >
+                      <input
+                        type="hidden"
+                        name="_subject"
+                        value="Portfolio Contact Submission"
+                      />
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <input
+                          type="text"
+                          name="name"
+                          required
+                          placeholder="Your name"
+                          className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-cyan-300/30"
+                        />
+
+                        <input
+                          type="email"
+                          name="email"
+                          required
+                          placeholder="Your email"
+                          className="rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-cyan-300/30"
+                        />
+                      </div>
+
+                      <textarea
+                        name="message"
+                        required
+                        rows={4}
+                        placeholder="Your message"
+                        className="w-full resize-none rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-cyan-300/30"
+                      />
+
+                      <button
+                        type="submit"
+                        className="w-full rounded-xl bg-cyan-300 px-4 py-3 text-sm font-semibold text-black transition hover:bg-cyan-200"
+                      >
+                        Send Message
+                      </button>
+                    </form>
                   </div>
                 </div>
 
