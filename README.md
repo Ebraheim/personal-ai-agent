@@ -2,64 +2,29 @@ Gradfolio
 
 Turn your CV into a website that speaks for you.
 
-Gradfolio is an AI-powered career website platform for students and fresh graduates. It transforms a traditional CV into a structured, interactive public portfolio with projects, experience, education, skills, certifications, achievements, and a verified-data AI assistant.
+Gradfolio is an AI-powered career website platform for students and fresh graduates. It converts CV information into a structured public portfolio with projects, experience, education, skills, certifications, achievements, contact details, and a verified-data AI assistant.
 
-Live Demo: https://gradfolio-ai.vercel.app
-Example Portfolio: https://gradfolio-ai.vercel.app/ebraheim
+Live platform: https://gradfolio-ai.vercel.app
 
-Why I Built It
+Example portfolio: https://gradfolio-ai.vercel.app/ebraheim
 
-Students and fresh graduates often have useful projects, skills, certifications, internships, and achievements that are difficult to communicate through a traditional one-page CV.
+Repository: https://github.com/Ebraheim/personal-ai-agent
 
-Gradfolio was built to turn that information into a cleaner, more interactive career presence that can be shared with recruiters through one link.
+Who It Is For
 
-The goal was to build something that:
+Gradfolio is designed for students and fresh graduates who have useful projects, skills, certifications, internships, and achievements that are difficult to communicate through a traditional one-page CV. It gives them one public link that recruiters can browse or question through an AI assistant.
 
-starts from information the user already has in a CV
+What It Does
 
-makes portfolio creation easier for non-technical users
+AI-assisted CV import
 
-gives each user their own public website
+Users can upload a CV and extract structured profile, experience, education, project, skill, certification, and AI-knowledge data. Extracted content is shown for review before it is imported; AI output is not treated as automatically correct.
 
-allows the owner to edit their content without touching code
+Public career website
 
-gives visitors an AI assistant that answers using verified portfolio data
+Each account receives a public portfolio route such as /ebraheim. Visible sections can include:
 
-keeps each user's data isolated and protected
-
-Core Features
-
-CV Import
-
-Users can upload a CV and use AI-assisted extraction to identify structured information such as:
-
-profile details
-
-experience
-
-education
-
-projects
-
-skills
-
-certifications
-
-AI knowledge
-
-The user reviews the extracted content before importing it into their website.
-
-Public Career Website
-
-Each account receives its own public portfolio URL.
-
-Example:
-
-gradfolio-ai.vercel.app/ebraheim
-
-The public website can display:
-
-Home / hero section
+Home and professional summary
 
 Projects
 
@@ -75,199 +40,144 @@ Certifications
 
 About
 
-Contact
+Contact links and form
 
 Downloadable CV
 
-AI assistant
+AI career assistant
 
-Sections with no content can be hidden automatically.
+Sections without content can be hidden.
 
-Website Editor
+Private website editor
 
-The private admin dashboard lets the owner manage their website without editing code.
+Authenticated owners can edit their portfolio without changing code. The admin area supports profile content, projects, experience, education, achievements, skills, certifications, AI knowledge, section ordering, visibility, contact information, and CV management.
 
-Owners can update:
+Verified-data AI assistant
 
-homepage content
+The public assistant answers questions about the portfolio owner using information connected to that user's Gradfolio. It is intentionally scoped to portfolio evidence instead of acting as a general-purpose chatbot.
 
-projects
+Multi-user security
 
-experience
+Every user has a separate account, slug, public website, CV, AI knowledge base, and suggested questions. Supabase Row Level Security (RLS) and authenticated server routes enforce owner-level isolation.
 
-education
+Usage Examples
 
-achievements
+Visitor: inspect evidence
 
-skills
+Open https://gradfolio-ai.vercel.app/ebraheim.
 
-certifications
+Select Projects to inspect Gradfolio and robotics work.
 
-about content
+Open the live-demo or GitHub link on a project card.
 
-contact information
+Visitor: ask the AI assistant
 
-AI knowledge
+Select AI Agent.
 
-section visibility and ordering
+Ask: What are Ebraheim's main skills?
 
-CV
+The assistant returns a response grounded in the published portfolio data.
 
-Verified-Data AI Assistant
+If the input is empty, submission is blocked. If the message is meaningless, the assistant asks for a clearer question instead of inventing portfolio facts.
 
-Each public portfolio includes an AI assistant that can answer visitor questions about the portfolio owner.
+Owner: create or update a portfolio
 
-The assistant is designed to respond using verified information connected to that specific user instead of acting as a general-purpose chatbot.
+Create an account or sign in.
 
-Example questions:
+Upload a CV or enter content manually.
 
-What projects has this person worked on?
+Review AI-extracted data before import.
 
-What are their main skills?
+Edit sections in the private dashboard.
 
-What experience do they have?
+Publish and share the public slug.
 
-How can I contact them?
+Architecture
 
-Suggested questions are stored and reused so the application does not need to regenerate them on every page refresh.
+flowchart TD
+    V[Visitor] --> P[Public portfolio /slug]
+    P --> D[Portfolio data]
+    P --> A[Verified-data AI assistant]
+    O[Authenticated owner] --> E[Admin editor]
+    E --> S[(Supabase)]
+    D --> S
+    A --> G[Google Gemini]
+    A --> S
+    S --> R[RLS, Auth, Storage]
 
-Multi-User Architecture
+Main components
 
-Gradfolio supports multiple independent users.
+Next.js App Router: landing page, public portfolio, authenticated admin pages, and API routes
 
-Each user has:
+Supabase PostgreSQL: portfolio content and suggested questions
 
-their own account
+Supabase Auth: account and owner authentication
 
-their own portfolio slug
+Supabase Storage: private CV files
 
-their own website content
+Supabase RLS: database-level user isolation
 
-their own CV
+Google Gemini: CV extraction and grounded portfolio answers
 
-their own AI knowledge
+Vercel: production hosting, Analytics, and Speed Insights
 
-their own suggested questions
-
-User data is isolated at both the application and database level.
-
-Secure Owner Editing
-
-Visitors can freely view a public portfolio, but editing controls are only available to the authenticated owner.
-
-The owner flow includes:
-
-Public Portfolio
-      ↓
-Edit Website
-      ↓
-Owner Password Confirmation
-      ↓
-Admin Dashboard
-
-A recruiter visiting the same public link cannot access the editor without the owner's account credentials.
-
-Account Management
-
-Owners can:
-
-view their account email
-
-view their public website URL
-
-change their password
-
-log out
-
-permanently delete their account
-
-Account deletion requires:
-
-the current password
-
-typing DELETE
-
-final confirmation
-
-Deletion removes the user's website data, uploaded CV files, and authentication account.
+Formspree: public contact-form delivery
 
 Tech Stack
 
-Frontend
+Next.js 16
 
-Next.js
-
-React
+React 19
 
 TypeScript
 
 Tailwind CSS
 
-Next.js App Router
-
-Backend
-
 Next.js Route Handlers
 
-Supabase
+Supabase PostgreSQL, Auth, Storage, and RLS
 
-Database & Authentication
+Google Gemini through @google/genai
 
-Supabase PostgreSQL
+Vercel Analytics and Speed Insights
 
-Supabase Auth
+Formspree
 
-Row Level Security (RLS)
+Local Setup
 
-Supabase Storage
+Prerequisites
 
-AI
+Node.js 20 or later
 
-Google Gemini
+npm
 
-@google/genai
+A Supabase project configured with the Gradfolio tables, storage bucket, and RLS policies
 
-Deployment
+A Google Gemini API key
 
-Vercel
+1. Clone the repository
 
-Vercel Speed Insights
+git clone https://github.com/Ebraheim/personal-ai-agent.git
+cd personal-ai-agent
 
-High-Level Architecture
+2. Install dependencies
 
-                    ┌─────────────────────┐
-                    │      Visitor        │
-                    └──────────┬──────────┘
-                               │
-                               ▼
-                    ┌─────────────────────┐
-                    │   Public Portfolio  │
-                    │   /[profile-slug]   │
-                    └──────────┬──────────┘
-                               │
-                 ┌─────────────┴─────────────┐
-                 │                           │
-                 ▼                           ▼
-        ┌─────────────────┐        ┌─────────────────┐
-        │ Portfolio Data  │        │  AI Assistant   │
-        └────────┬────────┘        └────────┬────────┘
-                 │                           │
-                 └─────────────┬─────────────┘
-                               ▼
-                    ┌─────────────────────┐
-                    │      Supabase       │
-                    │ DB / Auth / Storage │
-                    └──────────┬──────────┘
-                               ▲
-                               │
-                    ┌──────────┴──────────┐
-                    │   Admin Dashboard   │
-                    │ Authenticated Owner │
-                    └─────────────────────┘
+npm ci
 
-Database Design
+3. Configure environment variables
 
-Gradfolio uses owner-scoped data across tables including:
+Create .env.local in the repository root:
+
+GEMINI_API_KEY=your_gemini_api_key
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+SUPABASE_SECRET_KEY=your_server_only_supabase_secret_key
+
+Never commit real secret values. SUPABASE_SECRET_KEY must remain server-only.
+
+4. Prepare Supabase
+
+The configured project must contain these application tables:
 
 profiles
 
@@ -295,186 +205,227 @@ agent_knowledge
 
 suggested_questions
 
-Uploaded CV files are stored in the private cvs storage bucket.
+Create a private cvs storage bucket. Enable RLS on owner-scoped tables and restrict writes using the authenticated user ID, for example auth.uid() = user_id. Profile ownership uses auth.uid() = id.
 
-Security
-
-Security was treated as part of the application design rather than only as a UI feature.
-
-Row Level Security
-
-RLS is enabled across the application's public database tables.
-
-Owner-editable rows use policies based on the authenticated Supabase user, for example:
-
-auth.uid() = user_id
-
-Profiles use the authenticated account ID:
-
-auth.uid() = id
-
-This prevents one signed-in user from modifying another user's portfolio data.
-
-Additional Protection
-
-admin pages require authentication
-
-owner editing is separated from public viewing
-
-public profile editing controls are only shown to the profile owner
-
-entering editing mode from the public website requires password confirmation
-
-account deletion requires password verification and explicit confirmation
-
-server-only Supabase credentials are stored in environment variables
-
-CV files are stored separately by user
-
-User Flow
-
-Create Account
-      ↓
-Onboarding
-      ↓
-Upload CV
-      ↓
-AI-Assisted Extraction
-      ↓
-Review & Import
-      ↓
-Edit Website
-      ↓
-Publish Public Portfolio
-      ↓
-Share Link With Recruiters
-
-Users can also skip CV import and build their website manually.
-
-Running Locally
-
-1. Clone the repository
-
-git clone <your-repository-url>
-cd personal-ai-agent
-
-2. Install dependencies
-
-npm install
-
-3. Create .env.local
-
-Add the required environment variables:
-
-GEMINI_API_KEY=
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-SUPABASE_SECRET_KEY=
-
-Never commit real secret values to Git.
-
-4. Run the development server
+5. Start the development server
 
 npm run dev
 
-Open:
+Open http://localhost:3000.
 
-http://localhost:3000
-
-Production Build
-
-Run:
+6. Verify a production build
 
 npm run build
+npm start
 
-The project has been successfully tested with a production Next.js build before deployment.
+Important Routes
+
+Route
+
+Purpose
+
+/
+
+Gradfolio landing page
+
+/[slug]
+
+Public portfolio
+
+/admin
+
+Sign-in and owner entry
+
+/admin/dashboard
+
+Private content dashboard
+
+/api/chat
+
+Grounded AI answer endpoint
+
+/api/cv/extract
+
+AI-assisted CV extraction
+
+/api/cv/import
+
+Reviewed CV-data import
+
+/robots.txt
+
+Search-crawler rules
+
+/sitemap.xml
+
+Search discovery sitemap
+
+V2 Hardening Evaluation
+
+The second evaluation pass was completed on 27 August 2026 against the deployed production site.
+
+Area
+
+Scenarios
+
+Result
+
+Landing and portfolio navigation
+
+12
+
+12 passed
+
+AI assistant edge cases
+
+4
+
+4 passed
+
+Contact-form validation and delivery
+
+3
+
+3 passed
+
+Chrome, Microsoft Edge, and phone checks
+
+3
+
+3 passed
+
+Production build and deployment
+
+1
+
+1 passed
+
+SEO, social preview, HTTPS, and analytics checks
+
+5
+
+5 passed
+
+Total
+
+28
+
+28 expected outcomes
+
+Edge cases exercised
+
+Empty AI question
+
+Nonsense AI question (asdfghjkl 12345 !!!)
+
+Rapid double AI submission
+
+Empty contact form
+
+Invalid email format
+
+Valid contact submission
+
+Every public navigation item
+
+Project demo and repository links
+
+Chrome and Microsoft Edge rendering
+
+Phone rendering
+
+Search metadata, robots.txt, sitemap, and Open Graph preview
+
+Live Vercel Analytics event
+
+PageSpeed results
+
+Metric
+
+Mobile
+
+Desktop
+
+Performance
+
+77
+
+71
+
+Accessibility
+
+100
+
+100
+
+Best Practices
+
+100
+
+100
+
+SEO
+
+100
+
+100
+
+Key Design Decisions
+
+Verified context instead of a generic chatbot
+
+Recruiters need evidence about the candidate, not an unrestricted chatbot. The assistant therefore retrieves portfolio-specific information and is instructed to stay within that evidence.
+
+Review before CV import
+
+AI extraction can be wrong. Gradfolio presents extracted content for human review before writing it to the public site.
+
+Database-level isolation
+
+Multi-user separation is enforced with Supabase RLS instead of relying only on hidden buttons or frontend checks.
+
+One public link and a separate private editor
+
+The portfolio is safe to share publicly. Editing remains behind authentication and owner verification.
+
+Known Limitations
+
+Performance: PageSpeed performance measured 77 on mobile and 71 on desktop. The animation-heavy interface and client-side data loading need further optimization.
+
+Contact confirmation: Formspree redirects visitors to its generic confirmation page instead of showing an on-site success state.
+
+Initial fallback state: During one Chrome test, placeholder portfolio content appeared briefly before the saved profile data loaded.
+
+Search indexing: The metadata, robots file, and sitemap are live, but new pages may not immediately appear in Google results.
+
+Social metadata length: The share card renders, but one inspector warned that the title is long and the description is short.
+
+Database portability: The production Supabase schema and RLS policies are not yet versioned as a migration in this repository, so a brand-new database requires manual recreation of the documented tables and policies.
+
+Lint debt: The production build succeeds, but the full lint check reports pre-existing issues mainly involving internal admin navigation and one React effect.
+
+AI Transparency
+
+I used Claude Code and ChatGPT/Codex as development partners for brainstorming, initial code generation, debugging, code review, testing plans, and documentation. Google Gemini powers the product's CV extraction and portfolio assistant. I personally chose the product scope and architecture, reviewed changes, configured the data model and security behavior, tested edge cases, verified the production build, and checked the deployed site. AI-generated output was reviewed rather than accepted automatically.
 
 Deployment
 
-Gradfolio is deployed using Vercel.
+Gradfolio is deployed on Vercel. Pushes to main trigger a production deployment.
 
-Production:
+Production: https://gradfolio-ai.vercel.app
 
-https://gradfolio-ai.vercel.app
+HTTPS: enabled
 
-Vercel is connected to the GitHub repository, so pushes to the production branch trigger a new deployment automatically.
+Analytics: Vercel Analytics
 
-Vercel Speed Insights is also enabled to collect real-user performance metrics.
-
-Key Engineering Decisions
-
-Verified AI Context Instead of a Generic Chatbot
-
-The public assistant is intentionally scoped to the portfolio owner's information.
-
-This reduces irrelevant responses and makes the AI feature useful to recruiters who want to understand the candidate.
-
-Review Before CV Import
-
-AI extraction is not treated as automatically correct.
-
-Users review extracted information before it is written into their public portfolio.
-
-Database-Level User Isolation
-
-Multi-user separation is enforced through Supabase RLS rather than relying only on frontend checks.
-
-One Public Link, Separate Private Editor
-
-The public portfolio is designed to be safely shared with anyone.
-
-Editing happens through authenticated admin routes, while owner-only controls remain hidden from normal visitors.
-
-What I Learned
-
-Building Gradfolio required combining frontend development, backend APIs, authentication, databases, AI integration, security, deployment, and product design into one working system.
-
-Key areas developed during the project included:
-
-designing a multi-user SaaS architecture
-
-implementing authentication and authorization
-
-working with Supabase PostgreSQL and RLS
-
-designing CRUD-based content management
-
-integrating an LLM into a scoped application workflow
-
-handling CV upload, extraction, and storage
-
-separating public and private application experiences
-
-building secure account management
-
-deploying and validating a production application
-
-using real-user performance monitoring
-
-AI-Assisted Development
-
-AI tools were used during development for activities such as:
-
-exploring implementation approaches
-
-debugging
-
-reviewing code
-
-generating initial code structures
-
-discussing architecture and product decisions
-
-Final decisions about product scope, validation rules, user flows, security behavior, database structure, feature acceptance, testing, and deployment were reviewed and controlled by the developer.
+Performance monitoring: Vercel Speed Insights
 
 Status
 
-Gradfolio v1.0 — Live
-
-The core product is deployed and functional.
+Gradfolio is live and functional. The current version includes production deployment, multi-user portfolio management, AI-assisted CV import, a verified-data assistant, SEO discovery files, social metadata, analytics, and documented hardening results.
 
 Author
 
 Ebraheim Mohamed Pasha Qadri
 
-Built as a practical AI/software engineering project focused on turning a traditional student or graduate CV into a stronger interactive career presence.
+Computer & Autonomous Systems Engineer focused on AI, robotics, autonomous systems, and intelligent software.
